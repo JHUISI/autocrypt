@@ -1,4 +1,4 @@
 autocrypt
 =========
 
-automated cryptographic transformations and formal verification
+Automated cryptographic transformations and formal verification.
