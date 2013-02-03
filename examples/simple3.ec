@@ -27,7 +27,7 @@ game simple4 = simple3
 
         k = k + 1;
         if (k = j) {
-            retVal = 6;
+            retVal = 5;
         }
         else {
             retVal = 5;
