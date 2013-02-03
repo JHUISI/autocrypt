@@ -6,25 +6,18 @@ game simple3 = {
    var k : int
 
    fun incrementCounter(b:int) : int = {
-       var retVal : int;
-
        k = k + 1;
-       retVal = 5;
-       return retVal;
+       return 5;
    }
 
    abs A  = A {incrementCounter}
 
    fun Main() : int = {
-       var a : int;
        var retVal : int;
 
-       a = 5;
-       k = k + 1;
-       retVal = A(a);
+       retVal = A(5);
        return retVal;
    }
-
 }.
 
 game simple4 = simple3
@@ -34,7 +27,7 @@ game simple4 = simple3
 
         k = k + 1;
         if (k = j) {
-            retVal = 5;
+            retVal = 6;
         }
         else {
             retVal = 5;
@@ -43,15 +36,10 @@ game simple4 = simple3
         return retVal;
     }
 
-    (* abs A = A{} *)
-
     and Main = {
-        var a : int;
         var retVal : int;
 
-        a = 5;
-        k = k + 1;
-        retVal = A(a);
+        retVal = A(5);
         return retVal;
     }.
 
@@ -60,5 +48,4 @@ trivial.
 
 equiv simple3Main_simple4Main : simple3.Main ~ simple4.Main: true ==> ={res}.
 call.
-trivial.
 trivial.
