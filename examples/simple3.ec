@@ -49,3 +49,19 @@ trivial.
 equiv simple3Main_simple4Main : simple3.Main ~ simple4.Main: true ==> ={res}.
 call.
 trivial.
+
+game simple5 = simple3
+    where incrementCounter = {
+        k = k + 1;
+        return 6;
+    }
+
+    and Main = {
+        var retVal : int;
+
+        retVal = A(5);
+        return retVal;
+    }.
+
+equiv simple3Main_simple5Main: simple3.Main ~ simple5.Main: true ==> ={res}.
+
