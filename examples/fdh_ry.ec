@@ -8,7 +8,7 @@
 ** Computer Science, pages 229–235, 2000. Springer.
 *)
 
-prover alt-ergo, cvc3.
+(* prover alt-ergo, cvc3, z3. *)
 
 (** Abstract Types **)
 type group.
@@ -237,22 +237,23 @@ game G2 = G1
    return (h = f(pk, sigma) && !mem(mm, S));
  }.
 
-(* I think we probably need to specify that m,L are equal at the end *)
-equiv G1_H_G2_H : G1.H ~ G2.H: (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={m,L,sk} ==> ={res,L,sk}.
+equiv G1_H_G2_H : G1.H ~ G2.H: (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={m,sigma,mm,j,M,i,sk,pk,S,L} ==> ={res,sigma,mm,j,M,i,sk,pk,S,L}.
 (* ={res,sigma,mm,j,I,M,i,sk,pk,S,L} *)
 wp.
 rnd.
 simpl.
 save.
 
-equiv G1_Sign_G2_Sign : G1.Sign ~ G2.Sign: (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={m,sk,L} ==> ={res,sk,L}.
+equiv G1_Sign_G2_Sign : G1.Sign ~ G2.Sign: (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={m,sigma,mm,j,M,i,sk,pk,S,L} ==> ={res,sigma,mm,j,M,i,sk,pk,S,L}.
 call using G1_H_G2_H.
 wp.
 simpl.
 save.
 
-
-equiv G1_A_G2_A : G1.A ~ G2.A: ((i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={pk,sk,L}) ==> ={res} by auto.
+(* want to come back to this *)
+(*
+equiv G1_A_G2_A : G1.A ~ G2.A: ((i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={sigma,mm,j,M,i,sk,pk,S,L}) ==> ={res} by auto.
+*)
 
 equiv G1_G2 : G1.Main ~ G2.Main:
  true ==> ={res}.
