@@ -261,13 +261,19 @@ swap{1} -4.
 inline H.
 derandomize.
 wp.
-call using G1_H_G2_H.
-
-call (i{2}<=j{2} || in_dom(M{2}[j{2}], L{2})). 
 call (={pk,sk,L,S,M,i,j} && 
    (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && 
    (j{2} < i{2} => in_dom(j{2}, M{2})) ).
+auto.
+swap{2} -3.
+auto.
+trivial.
 
+
+
+call using G1_H_G2_H.
+
+call (i{2}<=j{2} || in_dom(M{2}[j{2}], L{2})). 
 
 ifsync 16 20.
 wp.

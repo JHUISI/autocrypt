@@ -25,11 +25,15 @@ game G2 = G1
   return dummy;
  }. 
 
+(* unnecessary, but here to be very clear *)
+equiv G1_f_G2_f : G1.f ~ G2.f : true ==> ={res}.
+trivial.
+
+
 (* output produced by the call below *)
 (*
 equiv inferred_G1_A_G2_A_5 : G1.A ~ G2.A : true ==> ={res} by auto.
 *)
-
 
 equiv G1_G2 : G1.Main ~ G2.Main:
  true ==> ={res}.
