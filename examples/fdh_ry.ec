@@ -239,29 +239,46 @@ game G2 = G1
    return (h = f(pk, sigma) && !mem(mm, S));
  }.
 
-equiv G1_H_G2_H : G1.H ~ G2.H: (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={m,sigma,mm,j,M,i,sk,pk,S,L} ==> (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={res,sigma,mm,j,M,i,sk,pk,S,L}.
-(* ={res,sigma,mm,j,I,M,i,sk,pk,S,L} *)
+equiv G1_H_G2_H : G1.H ~ G2.H: (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={m,M,i,sk,pk,S,L} ==> (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={res,M,i,sk,pk,S,L}.
 wp.
 rnd.
 simpl.
 save.
 
-equiv G1_Sign_G2_Sign : G1.Sign ~ G2.Sign: (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={m,sigma,mm,j,M,i,sk,pk,S,L} ==> ={res,sigma,mm,j,M,i,sk,pk,S,L} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})).
+equiv G1_Sign_G2_Sign : G1.Sign ~ G2.Sign: (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={m,M,i,sk,pk,S,L} ==> ={res,M,i,sk,pk,S,L} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})).
 call using G1_H_G2_H.
 wp.
 simpl.
 save.
 
-equiv G1_A_G2_A : G1.A ~ G2.A: ((!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={a_pk,sigma,mm,j,M,i,sk,pk,S,L}) ==> ={res} by auto (={sigma,mm,j,M,i,sk,pk,S,L} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2}))).
+equiv G1_A_G2_A : G1.A ~ G2.A: ((!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={a_pk,M,i,sk,pk,S,L}) ==> ={res} by auto (={M,i,sk,pk,S,L} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2}))).
 
 equiv G1_G2 : G1.Main ~ G2.Main:
- true ==> ={res}.
+true ==> ={res}.
+derandomize.
+wp.
+call using G1_H_G2_H.
+call using G1_A_G2_A.
+simpl.
+
+
+call using G1_A_G2_A.
+wp.
+swap{2} -2.
+rnd.
+rnd.
+auto.
+simpl.
+
+
 swap{1} -4.
 inline H.
 derandomize.
 wp.
 call using G1_A_G2_A.
 auto.
+swap{2} -3.
+
 (* rnd{2}. *)
 auto.
 rnd.
