@@ -63,7 +63,7 @@ axiom real_of_bool_and : forall (a:bool, b:bool),
   real_of_bool(a && b) = real_of_bool(a) * real_of_bool(b).
 
 (** Abstract procedures **)
-adversary A(pk: public_key) : message * group {message -> group; message -> group}.
+adversary A(a_pk: public_key) : message * group {message -> group; message -> group}.
 
 (** Game definitions **)
 
@@ -150,12 +150,14 @@ game G1 = EF
    return (h = f(pk, sigma) && !mem(mm,S));
  }.
 
-equiv EF_G1 : EF.Main ~ G1.Main: true ==> ={pk,sk,L,S,i,res}.
-inline H. 
-derandomize. 
-wp.
+ equiv EF_G1 : EF.Main ~ G1.Main: true ==> ={pk,sk,L,S,i,res}.
+   inline H. 
+   derandomize. 
+   wp.
  call (={pk,sk,L,S,i}).
- wp; swap{2} -2; trivial.
+   wp.
+   swap{2} -2.
+   trivial.
 save.
 
 claim PrEF_G1 : EF.Main[res && i <= q] = G1.Main[res && i <= q]
@@ -214,7 +216,7 @@ game G2 = G1
      i = i + 1;
   }
   return L[m];
- } 
+} 
 
  and Main = {
    var kp : key_pair;
@@ -237,23 +239,20 @@ game G2 = G1
    return (h = f(pk, sigma) && !mem(mm, S));
  }.
 
-equiv G1_H_G2_H : G1.H ~ G2.H: (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={m,sigma,mm,j,M,i,sk,pk,S,L} ==> ={res,sigma,mm,j,M,i,sk,pk,S,L}.
+equiv G1_H_G2_H : G1.H ~ G2.H: (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={m,sigma,mm,j,M,i,sk,pk,S,L} ==> (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={res,sigma,mm,j,M,i,sk,pk,S,L}.
 (* ={res,sigma,mm,j,I,M,i,sk,pk,S,L} *)
 wp.
 rnd.
 simpl.
 save.
 
-equiv G1_Sign_G2_Sign : G1.Sign ~ G2.Sign: (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={m,sigma,mm,j,M,i,sk,pk,S,L} ==> ={res,sigma,mm,j,M,i,sk,pk,S,L}.
+equiv G1_Sign_G2_Sign : G1.Sign ~ G2.Sign: (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={m,sigma,mm,j,M,i,sk,pk,S,L} ==> ={res,sigma,mm,j,M,i,sk,pk,S,L} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})).
 call using G1_H_G2_H.
 wp.
 simpl.
 save.
 
-(* want to come back to this *)
-(*
-equiv G1_A_G2_A : G1.A ~ G2.A: ((i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && ={sigma,mm,j,M,i,sk,pk,S,L}) ==> ={res} by auto.
-*)
+equiv G1_A_G2_A : G1.A ~ G2.A: ((!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={a_pk,sigma,mm,j,M,i,sk,pk,S,L}) ==> ={res} by auto (={sigma,mm,j,M,i,sk,pk,S,L} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2}))).
 
 equiv G1_G2 : G1.Main ~ G2.Main:
  true ==> ={res}.
@@ -261,14 +260,15 @@ swap{1} -4.
 inline H.
 derandomize.
 wp.
-call (={pk,sk,L,S,M,i,j} && 
-   (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && 
-   (j{2} < i{2} => in_dom(j{2}, M{2})) ).
+call using G1_A_G2_A.
 auto.
-swap{2} -3.
+(* rnd{2}. *)
 auto.
+rnd.
+rnd.
+rnd.
 trivial.
-
+simpl.
 
 
 call using G1_H_G2_H.

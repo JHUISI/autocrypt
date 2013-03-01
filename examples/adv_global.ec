@@ -30,7 +30,7 @@ equiv G1_f_G2_f : G1.f ~ G2.f : true ==> ={res}.
 trivial.
 save.
 
-(* also unnecessary and implied by the above, but here to be very clear again *)
+(* also unnecessary and implied by the above, but here to be very clear *)
 equiv G1_f_G2_f2 : G1.f ~ G2.f : ={x} ==> ={res}.
 trivial.
 save.
