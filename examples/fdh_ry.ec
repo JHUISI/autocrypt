@@ -251,14 +251,18 @@ wp.
 simpl.
 save.
 
-equiv G1_A_G2_A : G1.A ~ G2.A: ((!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={a_pk,M,i,sk,pk,S,L}) ==> ={res} by auto (={M,i,sk,pk,S,L} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2}))).
+equiv G1_A_G2_A : G1.A ~ G2.A: ((!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={a_pk,M,i,sk,pk,S,L}) ==> ={res} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2})) && ={M,i,sk,pk,S,L} by auto (={M,i,sk,pk,S,L} && (!(i{2} <= j{2}) => in_dom(M{2}[j{2}], L{2}))).
 
 equiv G1_G2 : G1.Main ~ G2.Main:
 true ==> ={res}.
 derandomize.
 wp.
 call using G1_H_G2_H.
-call using G1_A_G2_A.
+call using G1_A_G2_A. 
+wp.
+swap{2} -2.
+rnd.
+rnd.
 simpl.
 
 
