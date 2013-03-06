@@ -264,65 +264,6 @@ swap{2} -2.
 rnd.
 rnd.
 simpl.
-
-
-call using G1_A_G2_A.
-wp.
-swap{2} -2.
-rnd.
-rnd.
-auto.
-simpl.
-
-
-swap{1} -4.
-inline H.
-derandomize.
-wp.
-call using G1_A_G2_A.
-auto.
-swap{2} -3.
-
-(* rnd{2}. *)
-auto.
-rnd.
-rnd.
-rnd.
-trivial.
-simpl.
-
-
-call using G1_H_G2_H.
-
-call (i{2}<=j{2} || in_dom(M{2}[j{2}], L{2})). 
-
-ifsync 16 20.
-wp.
-
-
-(*  call.
-case: (!in_dom(mm,L) && (i<=j || in_dom(M[j], L))).
-trivial. 
-auto. *)
-
-
-
-call (={pk,sk,L,S,M,i,j} && 
-   (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && 
-   (j{2} < i{2} => in_dom(j{2}, M{2})) ).
-wp.
- swap{2} -3.
-rnd.
-rnd.
-simpl.
-rnd.
-simpl.
-
-
-wp.
-call (={pk,sk,L,S,M,i,j} && 
-   (i{2} <= j{2} || in_dom(M{2}[j{2}], L{2})) && 
-   (j{2} < i{2} => in_dom(j{2}, M{2})) ).
 save.
 
 claim PrG1_G2 :
