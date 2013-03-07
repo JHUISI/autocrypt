@@ -1,18 +1,12 @@
-(* prover alt-ergo, cvc3. *)
+prover alt-ergo, z3, cvc3.
 
 type G_1.
 type G_T.
 type message.
-type key_pair.
-type sk.
-type pk.
 
 cnst g_1_i : G_1.
 cnst g_T_i : G_T.
 cnst g : G_1.
-cnst n : int.
-cnst dummy : message.
-cnst q : int.
 
 op [*] : (G_1, G_1) -> G_1 as G_1_mul.
 op [^] : (G_1, int) -> G_1 as G_1_pow.
@@ -30,46 +24,129 @@ axiom G_T_mult_1 : forall (x : G_T), x * g_T_i = x.
 axiom G_T_exp_0 : forall (x : G_T), x ^ 0 = g_T_i.
 axiom G_T_exp_S : forall (x : G_T, k : int), k > 0 => x ^ k = x * (x^(k-1)).
 
-
 axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).
+axiom non_degenerate : !(e(g, g) = g_T_i).
 
-adversary A (g : G_1, x : G_T) : bool {}.
+pop KG   : () -> (int).
+pop Rand_G_1 : () -> (G_1).
 
-cnst a : int.
-cnst b : int.
 
-game G3 = {
+adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; message -> G_1}.
 
-  abs A = A{}
+game BLS_EF = {
+  var secret_key : int
+  var rand_oracle : (message, G_1) map
+  var queried : message list
 
-  fun Main() : G_T = {
-    var ret : G_T;
-    ret = e(g^a, g^b);
-    return ret;
+  fun Hash(m : message) : G_1 = {
+    if(!in_dom(m, rand_oracle)) {
+      rand_oracle[m] = Rand_G_1();
+    }
+    return rand_oracle[m];
+  }
+  
+  fun Sign(m : message) : G_1 = {
+    var h : G_1;
+    var s : G_1;
+    h = Hash(m);
+    s = h^secret_key;
+    queried = m :: queried;
+    return s;
   }
 
-  fun Experiment() : bool = {
-    var x : G_T;
-    var decision : bool;
+  abs A = Adv{Hash, Sign}
 
-    x = Main();
-    decision = A(g, x);
-    return (decision = true);
+  fun Verify(m : message, s : G_1, pk : G_1) : bool = {
+    var v : bool;
+    var h : G_1;
+    h = Hash(m);
+    v = (e(h, pk) = e(s, g));
+    return v;
+  }
+
+  fun Main() : bool = {
+    var pk : G_1;    
+    var m : message;
+    var h : G_1;
+    var s : G_1;
+    var v : bool;
+   
+    secret_key = KG();
+    pk = g^secret_key;
+    rand_oracle = empty_map;
+    queried = [];
+
+    (m, s) = A(pk);
+
+    v = Verify(m, s, pk);
+    return v && !mem(m, queried);
   }
 }.
 
-game G4 = G3 
-where Main = {
-    var ret : G_T;
-    ret = (e(g, g))^(b * a);
-    return ret;
+
+
+
+
+
+
+
+
+
+
+
+(* Generic definition of CDH
+
+Rules:
+
+You cannot overwrite Main.  
+
+You can change types that are not already defined like state and can
+overwrite functions other than Main.
+*)
+
+type state.
+cnst null_state : state.
+
+game CDH_Generic = {
+  fun Hash(m : message) : G_1 = {
+    return g_1_i;
+  }
+  
+  fun Sign(m : message) : G_1 = {
+    return g_1_i;
+  }
+
+  abs A = Adv{Hash, Sign}
+
+  fun Before(b : G_1) : (state * G_1) = {
+    return (null_state, g_1_i);
+  }
+
+  fun After(t : state, m : message, s : G_1, b : G_1) : int = {
+    return 0;
+  }
+
+
+  fun Main() : bool = {
+    var pk : G_1;
+    var b : G_1;
+    var exp : int;
+    var m : message;
+    var s : G_1;
+    var trans : state;
+
+    b = Rand_G_1();
+
+    (trans, pk) = Before(b);
+    (m, s)=A(pk);
+    exp = After(trans, m, s, b);
+
+    return (g^exp = b);
+  }
 }.
- 
 
-equiv g3_g4_equiv: G3.Main ~ G4.Main : true ==> ={res}.
-trivial.
-save.
 
-equiv g3_g4_equiv_exp: G3.Experiment ~ G4.Experiment : true ==> ={res}.
-call.
-call using g3_g4_equiv.
+(* for each message we can create a random z
+then hash(m) = m^z
+sign(m) = pk^z
+*)
