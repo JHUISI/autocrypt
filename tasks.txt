@@ -1,0 +1,21 @@
+define architecture for rooting proofs in something already believed on the machine (assumptions)
+
+translate schemes (SDL) to security definitions in easycrypt or check that scheme in easycrypt corresponds to SDL
+
+write code that verifies that a provided proof does refine to violating an assumption
+
+check that proof correctly connects the pieces (require the proof to have a claim at the end?)
+
+
+In the end, what we really need is a proof checker.
+
+Input:
+proof
+SDL scheme
+assumption
+metadata (an identifier for the assumption, the security definition used)
+
+Output:
+boolean, good proof or not
+
+
