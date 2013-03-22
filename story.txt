@@ -1,0 +1,24 @@
+Need to make this longer...
+
+Goal is to connect assumptions with the actual executing code
+
+assumption
+-?
+proof
+-sdl to ec translater
+sdl
+-code generator
+exe code
+
+
+We are interested in a model where a server for example wants it's
+clients to use a more efficient scheme.  We are not addressing cases
+where the server intensionally gives the client a faulty/insecure
+scheme.  For this reason, schemes should only be trusted for the
+server that provided them.  If the server gives us a malicious scheme,
+which we use for comm. with that server, it doesn't matter because
+tehy could give us evil data anyway and can give all of our data to
+anyone they want.
+
+
+
