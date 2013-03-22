@@ -86,6 +86,7 @@ axiom mod_bound :
 pop KG   : () -> (int).
 pop Rand_G_1 : () -> (G_1).
 
+axiom Rand_G_1 
 
 adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; message -> G_1}.
 
