@@ -8,6 +8,7 @@ cnst g_1_i : G_1.
 cnst g_T_i : G_T.
 cnst g : G_1.
 cnst q : int.
+cnst queries : int.
 
 op [*] : (G_1, G_1) -> G_1 as G_1_mul.
 op [^] : (G_1, int) -> G_1 as G_1_pow.
@@ -15,9 +16,23 @@ op [^] : (G_1, int) -> G_1 as G_1_pow.
 op [*] : (G_T, G_T) -> G_T as G_T_mul.
 op [^] : (G_T, int) -> G_T as G_T_pow.
 
+op G_1_log : G_1 -> int.
+op G_T_log : G_T -> int.
+
 op e : (G_1, G_1) -> G_T as G_1_pair.
 
-(* pull in the axioms from ElGamal.  Note that G_1 and G_T have the same order (double check this). *)
+(* 
+   From easycrypt ElGamal:
+   If we use the native modulo alt-ergo is not able
+   to perform the proof.
+   So we declare an operator (%%) which stand for the modulo ...
+*)
+
+op [%%] : (int,int) -> int as int_mod.
+
+axiom q_pos : 0 < q.
+
+(* Axioms largely pulled from ElGamal.  Note that G_1 and G_T have the same order if the order is prime. *)
 
 axiom G_1_mult_1 : forall (x : G_1), x * g_1_i = x.
 axiom G_1_exp_0 : forall (x : G_1), x ^ 0 = g_1_i.
@@ -28,7 +43,45 @@ axiom G_T_exp_0 : forall (x : G_T), x ^ 0 = g_T_i.
 axiom G_T_exp_S : forall (x : G_T, k : int), k > 0 => x ^ k = x * (x^(k-1)).
 
 axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).
-axiom non_degenerate : !(e(g, g) = g_T_i).
+(* axiom non_degenerate : !(e(g_1_i, g_1_i) = g_T_i). *)
+
+axiom G_1_pow_add : 
+ forall (x, y:int), g_1_i ^ (x + y) = g_1_i ^ x * g_1_i ^ y.
+
+axiom G_T_pow_add : 
+ forall (x, y:int), g_T_i ^ (x + y) = g_T_i ^ x * g_T_i ^ y.
+
+axiom G_1_pow_mult :
+ forall (x, y:int),  (g_1_i ^ x) ^ y = g_1_i ^ (x * y).
+
+axiom G_T_pow_mult :
+ forall (x, y:int),  (g_T_i ^ x) ^ y = g_T_i ^ (x * y).
+
+axiom G_1_log_pow : 
+ forall (g_1_i':G_1), g_1_i ^ G_1_log(g_1_i') = g_1_i'.
+
+axiom G_T_log_pow : 
+ forall (g_T_i':G_T), g_T_i ^ G_T_log(g_T_i') = g_T_i'.
+
+axiom G_1_pow_mod : 
+ forall (z:int), g_1_i ^ (z%%q) = g_1_i ^ z.
+
+axiom G_T_pow_mod : 
+ forall (z:int), g_T_i ^ (z%%q) = g_T_i ^ z.
+
+
+axiom mod_add : 
+ forall (x,y:int), (x%%q + y)%%q = (x + y)%%q.
+
+axiom mod_small : 
+ forall (x:int), 0 <= x => x < q => x%%q = x.
+
+axiom mod_sub : 
+ forall (x, y:int), (x%%q - y)%%q = (x - y)%%q. 
+
+axiom mod_bound : 
+ forall (x:int), 0 <= x%%q && x%%q < q. 
+
 
 pop KG   : () -> (int).
 pop Rand_G_1 : () -> (G_1).
@@ -67,17 +120,21 @@ game BLS_EF = {
     return v;
   }
 
+  fun Init() : () = {
+    secret_key = KG();
+    rand_oracle = empty_map;
+    queried = [];
+  }
+
   fun Main() : bool = {
     var pk : G_1;    
     var m : message;
     var h : G_1;
     var s : G_1;
     var v : bool;
-   
-    secret_key = KG();
+
+    Init();
     pk = g^secret_key;
-    rand_oracle = empty_map;
-    queried = [];
 
     (m, s) = A(pk);
 
@@ -87,15 +144,88 @@ game BLS_EF = {
 }.
 
 
+game Inject = BLS_EF
+var j : int
+var i : int
+var mess_num : (message, int) map
+
+where Hash = {
+    if(!in_dom(m, rand_oracle)) {
+      rand_oracle[m] = Rand_G_1();
+      mess_num[m]=i;
+      i=i+1;
+    }
+    return rand_oracle[m];
+}
+
+and Sign = {
+    var h : G_1;
+    var s : G_1;
+    h = Hash(m);
+    s = h^secret_key;
+    queried = m :: queried;
+    return s;
+}
+
+and Init = {
+  secret_key = KG();
+  rand_oracle = empty_map;
+  mess_num = empty_map;
+  queried = [];
+  i=0;
+  j=[0..queries];
+}.
+  
+
+game Test1 = {
+  fun Main() : G_1 = {
+    var ret : G_1;
+    ret = Rand_G_1();
+    return ret;
+  }
+}.
+
+
+game Test2 = Test1
+
+where Main = {
+  var exp : int;
+  exp = [0..q];
+
+  return g_1_i^exp;
+}.
+
+equiv Test_equiv : Test1.Main ~ Test2.Main : true ==> ={res}.
+rnd{1}.
+
+rnd ((exp)), (exp).
 
 
 
+game G_Mod_Hash = BLS_EF
 
+var hashes : (message, G_1) map
+var sigs : (message, G_1) map
 
+  where Hash = {
+    var exp : int;
 
+    if(!in_dom(m, rand_oracle)) {
+      exp=[0..q];
+      
+      sigs[m]=g_1_i^(secret_key+exp);
+      rand_oracle[m]=g_1_i^exp;
+    }
+    return rand_oracle[m];
+  }
+.
+equiv Mod_Hash : BLS_EF.Hash ~ G_Mod_Hash.Hash : ={m,rand_oracle} ==> ={res,rand_oracle}.
 
-
-
+derandomize.
+wp.
+rnd{1}.
+rnd{2}.
+simpl.
 
 (* Generic definition of CDH
 
@@ -121,7 +251,6 @@ game CDH_Generic = {
   fun After(t : state, m : message, s : G_1, b : G_1) : int = {
     return 0;
   }
-
 
   fun Hash(m : message) : G_1 = {
     return g_1_i;
@@ -162,3 +291,43 @@ game CDH_Generic = {
 then hash(m) = m^z
 sign(m) = pk^z
 *)
+
+(* a is analogous to the key in our game *)
+
+Game CDH_BLS = CDH_Generic
+
+var sigs : (message, G_1) map
+var hashes : (message, G_1) map
+var i : int
+var j : int
+
+where Before = {
+  j=[0..queries];
+  sigs=empty_map;
+  hashes=empty_map;
+  return (null_state, g_1_i);
+}
+
+where Hash = {
+  var h : G_1;
+  var exp : int;
+ 
+  if(!in_dom(m, sigs)) {
+    if(i=j) {
+      hashes[m]=given_2
+    } else {
+      exp=[0..q];
+      sigs[m]=given_1^exp;
+      hashes[m]=g_1_i^exp;
+    }
+    i=i+1;
+  }
+  return hashes[m];
+}
+
+and Sign = {
+  var h : G_1;
+
+  h=Hash(m)
+  return sigs[m];
+}.
