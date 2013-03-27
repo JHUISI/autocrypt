@@ -1,4 +1,6 @@
-import re, sys
+import sdlpath
+from sdlparser.SDLParser import *
+import re
 
 templateFileName = "/home/easycrypt/Desktop/autocrypt/ECTemplate.txt"
 
@@ -65,8 +67,28 @@ def getAtLeastOneHashCallOrNot(inputSDLFile):
 
     return False
 
+def addGlobalVars(outputECFile):
+    outputString = "  var secret_key : int\n"
+    outputString += "  var queried : message list\n"
+    outputECFile.write(outputString)
+
+def addGlobalVarsForHashes(outputECFile):
+    outputString = "  var rand_oracle : (message, G_1) map\n"
+    outputECFile.write(outputString)
+
+def addHashFuncDef(outputECFile):
+    outputString = "\n  fun Hash(m : message) : G_1 = {\n"
+    outputString += "    if(!in_dom(m, rand_oracle)) {\n"
+    outputString += "      rand_oracle[m] = Rand_G_1();\n"
+    outputString += "    }\n"
+    outputString += "    return rand_oracle[m];\n"
+    outputString += "  }\n"
+
+    outputECFile.write(outputString)
+
 def addStatementsForPresenceOfHashes(outputECFile):
-    dddddddd
+    addGlobalVarsForHashes(outputECFile)
+    addHashFuncDef(outputECFile)
 
 def main(inputSDLFileName, outputECFileName):
     inputSDLFile = open(inputSDLFileName, 'r')
@@ -76,6 +98,7 @@ def main(inputSDLFileName, outputECFileName):
 
     addTemplateLinesToOutputECFile(outputECFile)
     addGameDeclLine(inputSDLFileName, outputECFile)
+    addGlobalVars(outputECFile)
 
     atLeastOneHashCall = getAtLeastOneHashCallOrNot(inputSDLFile)
     if (atLeastOneHashCall == True):

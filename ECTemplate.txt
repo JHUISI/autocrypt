@@ -8,6 +8,7 @@ cnst g_1_i : G_1.
 cnst g_T_i : G_T.
 cnst g : G_1.
 cnst q : int.
+cnst queries : int.
 
 op [*] : (G_1, G_1) -> G_1 as G_1_mul.
 op [^] : (G_1, int) -> G_1 as G_1_pow.
@@ -15,9 +16,23 @@ op [^] : (G_1, int) -> G_1 as G_1_pow.
 op [*] : (G_T, G_T) -> G_T as G_T_mul.
 op [^] : (G_T, int) -> G_T as G_T_pow.
 
+op G_1_log : G_1 -> int.
+op G_T_log : G_T -> int.
+
 op e : (G_1, G_1) -> G_T as G_1_pair.
 
-(* pull in the axioms from ElGamal.  Note that G_1 and G_T have the same order (double check this). *)
+(* 
+   From easycrypt ElGamal:
+   If we use the native modulo alt-ergo is not able
+   to perform the proof.
+   So we declare an operator (%%) which stand for the modulo ...
+*)
+
+op [%%] : (int,int) -> int as int_mod.
+
+axiom q_pos : 0 < q.
+
+(* Axioms largely pulled from ElGamal.  Note that G_1 and G_T have the same order if the order is prime. *)
 
 axiom G_1_mult_1 : forall (x : G_1), x * g_1_i = x.
 axiom G_1_exp_0 : forall (x : G_1), x ^ 0 = g_1_i.
@@ -28,7 +43,45 @@ axiom G_T_exp_0 : forall (x : G_T), x ^ 0 = g_T_i.
 axiom G_T_exp_S : forall (x : G_T, k : int), k > 0 => x ^ k = x * (x^(k-1)).
 
 axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).
-axiom non_degenerate : !(e(g, g) = g_T_i).
+(* axiom non_degenerate : !(e(g_1_i, g_1_i) = g_T_i). *)
+
+axiom G_1_pow_add : 
+ forall (x, y:int), g_1_i ^ (x + y) = g_1_i ^ x * g_1_i ^ y.
+
+axiom G_T_pow_add : 
+ forall (x, y:int), g_T_i ^ (x + y) = g_T_i ^ x * g_T_i ^ y.
+
+axiom G_1_pow_mult :
+ forall (x, y:int),  (g_1_i ^ x) ^ y = g_1_i ^ (x * y).
+
+axiom G_T_pow_mult :
+ forall (x, y:int),  (g_T_i ^ x) ^ y = g_T_i ^ (x * y).
+
+axiom G_1_log_pow : 
+ forall (g_1_i':G_1), g_1_i ^ G_1_log(g_1_i') = g_1_i'.
+
+axiom G_T_log_pow : 
+ forall (g_T_i':G_T), g_T_i ^ G_T_log(g_T_i') = g_T_i'.
+
+axiom G_1_pow_mod : 
+ forall (z:int), g_1_i ^ (z%%q) = g_1_i ^ z.
+
+axiom G_T_pow_mod : 
+ forall (z:int), g_T_i ^ (z%%q) = g_T_i ^ z.
+
+
+axiom mod_add : 
+ forall (x,y:int), (x%%q + y)%%q = (x + y)%%q.
+
+axiom mod_small : 
+ forall (x:int), 0 <= x => x < q => x%%q = x.
+
+axiom mod_sub : 
+ forall (x, y:int), (x%%q - y)%%q = (x - y)%%q. 
+
+axiom mod_bound : 
+ forall (x:int), 0 <= x%%q && x%%q < q. 
+
 
 pop KG   : () -> (int).
 pop Rand_G_1 : () -> (G_1).
