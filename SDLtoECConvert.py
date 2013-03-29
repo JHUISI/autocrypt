@@ -9,6 +9,16 @@ signFuncName_EC = "Sign"
 messageName_EC = "m"
 messageType_EC = "message"
 secretKeyName_EC = "secret_key"
+multOp_EC = "*"
+expOp_EC = "^"
+
+def writeNumOfSpacesToString(numSpaces):
+    outputString = ""
+
+    for space in range(0, numSpaces):
+        outputString += " "
+
+    return outputString
 
 def addTemplateLinesToOutputECFile(outputECFile):
     templateFile = open(templateFileName, 'r')
@@ -99,7 +109,8 @@ def addStatementsForPresenceOfHashes(outputECFile):
 def getInputSDLFileMetadata(inputSDLFileName):
     parseFile2(inputSDLFileName, False, True)
     assignInfo = getAssignInfo()
-    return assignInfo
+    astNodes = getAstNodes()
+    return (assignInfo, astNodes)
 
 def getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo):
     for funcName in assignInfo:
@@ -114,11 +125,64 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo):
     if (oldFuncName not in assignInfo):
         sys.exit("writeVarDecls in SDLtoECConvert.py:  oldFuncName not in assignInfo.")
 
-    ddddd
+    outputString = ""
 
-def convertSignFunc(outputECFile, config, assignInfo):
+    for varName in assignInfo[oldFuncName]:
+        if ( (varName == inputKeyword) or (varName == outputKeyword) ):
+            continue
+
+        varType_SDL = getVarTypeFromVarName(varName, oldFuncName, False, False)
+        varType_EC = convertGroupTypeSDLtoEC(varType_SDL)
+
+        outputString += "    var " + varName + " : " + varType_EC + ";\n"
+
+    if (len(outputString) > 0):
+        outputECFile.write(outputString)
+
+def writeBodyOfFunc(outputECFile, oldFuncName, astNodes):
+    startLineNoOfFunc = getStartLineNoOfFunc(oldFuncName)
+    endLineNoOfFunc = getEndLineNoOfFunc(oldFuncName)
+
+    startLineNoOfBody = startLineNoOfFunc + 2
+    endLineNoOfBody = endLineNoOfFunc - 2
+
+    writeAstNodesToFile(outputECFile, astNodes, startLineNoOfBody, endLineNoOfBody)
+
+def isAssignStmt(astNode):
+    if (astNode.type == ops.EQ):
+        return True
+
+    return False
+
+def getAssignStmtAsString(astNode):
+    if (astNode.type == ops.ATTR):
+        return str(astNode)
+    elif (astNode.type == ops.EXP):
+        leftSide = getAssignStmtAsString(astNode.left)
+        rightSide = getAssignStmtAsString(astNode.right)
+        return "(" + leftSide + " ^ " + rightSide + ")"
+    else:
+        sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  could not handle this type of node (" + str(astNode) + ").  Need to add more logic to support it.")
+
+def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo):
+    outputString = ""
+    currentNumSpaces = 4
+
+    for lineNo in range(startLineNo, (endLineNo + 1)):
+        currentAstNode = astNodes[(lineNo - 1)]
+        outputString += writeNumOfSpacesToString(currentNumSpaces)
+        if (isAssignStmt(currentAstNode) == True):
+            outputString += getAssignStmtAsString(currentAstNode)
+        else:
+            sys.exit("writeAstNodesToFile in SDLtoECConvert.py:  cannot handle this type of AST node.  Need to add logic to support it.")
+        outputString += "\n"
+
+    outputECFile.write(outputString)
+
+def convertSignFunc(outputECFile, config, assignInfo, astNodes):
     writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config)
     writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo)
+    writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes)
 
 def getTypeOfOutputVar(funcName):
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
@@ -184,7 +248,7 @@ def main(inputSDLFileName, outputECFileName):
 
     atLeastOneHashCall = False
 
-    assignInfo = getInputSDLFileMetadata(inputSDLFileName)
+    (assignInfo, astNodes) = getInputSDLFileMetadata(inputSDLFileName)
 
     addTemplateLinesToOutputECFile(outputECFile)
     addGameDeclLine(inputSDLFileName, outputECFile)
@@ -194,7 +258,7 @@ def main(inputSDLFileName, outputECFileName):
     if (atLeastOneHashCall == True):
         addStatementsForPresenceOfHashes(outputECFile)
 
-    convertSignFunc(outputECFile, config, assignInfo)
+    convertSignFunc(outputECFile, config, assignInfo, astNodes)
 
     inputSDLFile.close()
     outputECFile.close()
