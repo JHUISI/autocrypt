@@ -1,7 +1,7 @@
 import sys, time
 
-dir_above = '/home/easycrypt/Desktop/charm/'
-sdl_pkg = '/home/easycrypt/Desktop/charm/sdlparser/'
+dir_above = '../charm/'
+sdl_pkg = '../charm/sdlparser/'
 
 if dir_above not in sys.path:
    sys.path.append(dir_above)

@@ -1,8 +1,10 @@
 import sdlpath
 from sdlparser.SDLParser import *
-import re
+import re, importlib
 
-templateFileName = "/home/easycrypt/Desktop/autocrypt/ECTemplate.txt"
+templateFileName = "ECTemplate.txt"
+configFileName = "SDLtoECConfig"
+hashFuncName = "Hash"
 
 def addTemplateLinesToOutputECFile(outputECFile):
     templateFile = open(templateFileName, 'r')
@@ -77,12 +79,12 @@ def addGlobalVarsForHashes(outputECFile):
     outputECFile.write(outputString)
 
 def addHashFuncDef(outputECFile):
-    outputString = "\n  fun Hash(m : message) : G_1 = {\n"
+    outputString = "\n  fun "+ hashFuncName + "(m : message) : G_1 = {\n"
     outputString += "    if(!in_dom(m, rand_oracle)) {\n"
     outputString += "      rand_oracle[m] = Rand_G_1();\n"
     outputString += "    }\n"
     outputString += "    return rand_oracle[m];\n"
-    outputString += "  }\n"
+    outputString += "  }\n\n"
 
     outputECFile.write(outputString)
 
@@ -90,19 +92,48 @@ def addStatementsForPresenceOfHashes(outputECFile):
     addGlobalVarsForHashes(outputECFile)
     addHashFuncDef(outputECFile)
 
+def getInputSDLFileMetadata(inputSDLFileName):
+    parseFile2(inputSDLFileName, False, True)
+    assignInfo = getAssignInfo()
+    return assignInfo
+
+def getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo):
+    for funcName in assignInfo:
+        for varName in assignInfo[funcName]:
+            varInfoObj = assignInfo[funcName][varName]
+            if (len(varInfoObj.getHashArgsInAssignNode()) > 0):
+                return True
+
+    return False
+
+def convertSignFunc(outputECFile):
+    outputString = ""
+    outputString += "  fun Sign("
+
+    outputECFile.write(outputString)
+
 def main(inputSDLFileName, outputECFileName):
     inputSDLFile = open(inputSDLFileName, 'r')
     outputECFile = open(outputECFileName, 'w')
 
+    config = importlib.import_module(configFileName)
+
     atLeastOneHashCall = False
+
+    assignInfo = getInputSDLFileMetadata(inputSDLFileName)
 
     addTemplateLinesToOutputECFile(outputECFile)
     addGameDeclLine(inputSDLFileName, outputECFile)
     addGlobalVars(outputECFile)
 
-    atLeastOneHashCall = getAtLeastOneHashCallOrNot(inputSDLFile)
+    atLeastOneHashCall = getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo)
     if (atLeastOneHashCall == True):
         addStatementsForPresenceOfHashes(outputECFile)
+
+    convertSignFunc(outputECFile)
+
+    inputSDLFile.close()
+    outputECFile.close()
 
 if __name__ == "__main__":
     lenSysArgv = len(sys.argv)

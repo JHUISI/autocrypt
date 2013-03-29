@@ -100,3 +100,5 @@ game blsfull_EF = {
     }
     return rand_oracle[m];
   }
+
+  fun Sign(

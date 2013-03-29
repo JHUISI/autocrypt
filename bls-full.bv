@@ -21,13 +21,13 @@ END :: func:keygen
 
 BEGIN :: func:sign
 input := list{sk, M}
-x:=aH(M, G1)^sk)
+sig := (H(M, G1)^sk)
 output := sig
 END :: func:sign
 
 BEGIN :: func:verify
  input := list{pk, M, sig, g}
- #h := H(M, G1)
+ h := H(M, G1)
  BEGIN :: if
  if {e(h, pk) == e(sig, g)}
  output := True
@@ -50,7 +50,7 @@ END :: count
 
 # variables computed before each signature verification
 BEGIN :: precompute
-  #h := H(M, G1)
+  h := H(M, G1)
 END :: precompute
 
 # individual verification check
