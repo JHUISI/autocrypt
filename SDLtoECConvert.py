@@ -4,7 +4,11 @@ import re, importlib
 
 templateFileName = "ECTemplate.txt"
 configFileName = "SDLtoECConfig"
-hashFuncName = "Hash"
+hashFuncName_EC = "Hash"
+signFuncName_EC = "Sign"
+messageName_EC = "m"
+messageType_EC = "message"
+secretKeyName_EC = "secret_key"
 
 def addTemplateLinesToOutputECFile(outputECFile):
     templateFile = open(templateFileName, 'r')
@@ -70,7 +74,7 @@ def getAtLeastOneHashCallOrNot(inputSDLFile):
     return False
 
 def addGlobalVars(outputECFile):
-    outputString = "  var secret_key : int\n"
+    outputString = "  var " + secretKeyName_EC + " : int\n"
     outputString += "  var queried : message list\n"
     outputECFile.write(outputString)
 
@@ -79,7 +83,7 @@ def addGlobalVarsForHashes(outputECFile):
     outputECFile.write(outputString)
 
 def addHashFuncDef(outputECFile):
-    outputString = "\n  fun "+ hashFuncName + "(m : message) : G_1 = {\n"
+    outputString = "\n  fun "+ hashFuncName_EC + "(m : message) : G_1 = {\n"
     outputString += "    if(!in_dom(m, rand_oracle)) {\n"
     outputString += "      rand_oracle[m] = Rand_G_1();\n"
     outputString += "    }\n"
@@ -106,11 +110,71 @@ def getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo):
 
     return False
 
-def convertSignFunc(outputECFile):
+def writeVarDecls(outputECFile, oldFuncName, assignInfo):
+    if (oldFuncName not in assignInfo):
+        sys.exit("writeVarDecls in SDLtoECConvert.py:  oldFuncName not in assignInfo.")
+
+    ddddd
+
+def convertSignFunc(outputECFile, config, assignInfo):
+    writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config)
+    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo)
+
+def getTypeOfOutputVar(funcName):
+    inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
+    outputVars = inputOutputVarsDict[outputKeyword]
+    if (len(outputVars) != 1):
+        sys.exit("getTypeOfOutputVar in SDLtoECConvert.py:  number of output variables of function is unequal to one; not supported.")
+
+    outputType_SDL = getVarTypeFromVarName(outputVars[0], funcName, False, False)
+    outputType_EC = convertGroupTypeSDLtoEC(outputType_SDL)
+    return outputType_EC
+
+def convertGroupTypeSDLtoEC(outputType_SDL):
+    if (outputType_SDL == types.G1):
+        return "G_1"
+    if (outputType_SDL == types.G2):
+        return "G_1"
+    if (outputType_SDL == types.GT):
+        return "G_T"
+
+    sys.exit("convertGroupTypeSDLtoEC in SDLtoECConvert.py:  outputType_SDL is not of a type we support; need to add more logic to support it.")
+
+def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config):
     outputString = ""
-    outputString += "  fun Sign("
+    outputString += "  fun " + newFuncName + "("
+    outputString += getLineOfInputParams(oldFuncName, config)
+    outputString += ") : "
+    outputString += getTypeOfOutputVar(oldFuncName)
+    outputString += " = {\n"
 
     outputECFile.write(outputString)
+
+def getLineOfInputParams(funcName, config):
+    inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
+    
+    outputString = ""
+
+    for varName in inputOutputVarsDict[inputKeyword]:
+        outputString += getECVarNameAndTypeFromSDLName(varName, config)
+        if (len(outputString) > 0):
+            outputString += ", "
+
+    lenOutputString = len(outputString)
+
+    if (outputString[(lenOutputString - 2):lenOutputString] == ", "):
+        outputString = outputString[0:(lenOutputString - len(", "))]
+
+    return outputString
+
+def getECVarNameAndTypeFromSDLName(varName, config):
+    if (varName == config.secretKeyName_SDL):
+        return ""
+
+    if (varName == config.messageName_SDL):
+        return messageName_EC + " : " + messageType_EC
+
+    sys.exit("getECVarNameAndTypeFromSDLName in SDLtoECConvert.py:  could not handle case of varName passed in.  Need to add more logic for it.")
 
 def main(inputSDLFileName, outputECFileName):
     inputSDLFile = open(inputSDLFileName, 'r')
@@ -130,7 +194,7 @@ def main(inputSDLFileName, outputECFileName):
     if (atLeastOneHashCall == True):
         addStatementsForPresenceOfHashes(outputECFile)
 
-    convertSignFunc(outputECFile)
+    convertSignFunc(outputECFile, config, assignInfo)
 
     inputSDLFile.close()
     outputECFile.close()

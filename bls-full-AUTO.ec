@@ -101,4 +101,4 @@ game blsfull_EF = {
     return rand_oracle[m];
   }
 
-  fun Sign(
+  fun Sign(m : message) : G_1 = {
