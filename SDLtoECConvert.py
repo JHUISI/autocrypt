@@ -5,6 +5,7 @@ import re, importlib
 templateFileName = "ECTemplate.txt"
 configFileName = "SDLtoECConfig"
 booleanType_EC = "bool"
+varKeyword_EC = "var"
 abstractKeyword_EC = "abs"
 adversaryIdentifier_EC = "A"
 adversarySignatureIdentifier_EC = "Adv"
@@ -15,6 +16,7 @@ messageName_EC = "m"
 messageType_EC = "message"
 secretKeyName_EC = "secret_key"
 queriedName_EC = "queried"
+varNameForVerifyBoolRetVal_EC = "v"
 appendOperator_EC = "::"
 funcStartChar_EC = "{"
 funcEndChar_EC = "}"
@@ -159,7 +161,7 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo):
 
         varType_EC = getVarTypeFromVarName_EC(varName, oldFuncName)
 
-        outputString += "    var " + varName + " : " + varType_EC + ";\n"
+        outputString += "    " + varKeyword_EC + " " + varName + " : " + varType_EC + ";\n"
 
     if (len(outputString) > 0):
         outputECFile.write(outputString)
@@ -225,7 +227,7 @@ def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config):
             outputString += getAssignStmtAsString(currentAstNode, config)
             outputString += endOfLineOperator_EC
         else:
-            sys.exit("writeAstNodesToFile in SDLtoECConvert.py:  cannot handle this type of AST node.  Need to add logic to support it.")
+            sys.exit("writeAstNodesToFile in SDLtoECConvert.py:  cannot handle this type of AST node (" + str(currentAstNode) + ").  Need to add logic to support it.")
         outputString += "\n"
 
     outputECFile.write(outputString)
@@ -266,6 +268,14 @@ def writeFuncEnd(outputECFile):
 
     outputECFile.write(outputString)
 
+def addBoolRetVarForVerifyFunc(outputECFile):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(4)
+    outputString += varKeyword_EC + " " + varNameForVerifyBoolRetVal_EC + " : "
+    outputString += booleanType_EC + endOfLineOperator_EC + "\n"
+
+    outputECFile.write(outputString)
+
 def convertSignFunc(outputECFile, config, assignInfo, astNodes):
     writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config, assignInfo)
     writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo)
@@ -276,6 +286,9 @@ def convertSignFunc(outputECFile, config, assignInfo, astNodes):
 
 def convertVerifyFunc(outputECFile, config, assignInfo, astNodes):
     writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo)
+    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo)
+    addBoolRetVarForVerifyFunc(outputECFile)
+    writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config)
 
 def getTypeOfOutputVar(funcName):
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
