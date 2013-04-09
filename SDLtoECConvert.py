@@ -4,13 +4,29 @@ import re, importlib
 
 templateFileName = "ECTemplate.txt"
 configFileName = "SDLtoECConfig"
+booleanType_EC = "bool"
+abstractKeyword_EC = "abs"
+adversaryIdentifier_EC = "A"
+adversarySignatureIdentifier_EC = "Adv"
 hashFuncName_EC = "Hash"
 signFuncName_EC = "Sign"
+verifyFuncName_EC = "Verify"
 messageName_EC = "m"
 messageType_EC = "message"
 secretKeyName_EC = "secret_key"
+queriedName_EC = "queried"
+appendOperator_EC = "::"
+funcStartChar_EC = "{"
+funcEndChar_EC = "}"
+assignmentOperator_EC = "="
+returnKeyword_EC = "return"
 multOp_EC = "*"
 expOp_EC = "^"
+endOfLineOperator_EC = ";"
+validGroupTypes = ["G1", "G2", "GT", "ZR"]
+validHashGroupTypes = ["G1", "G2", "ZR"]
+
+DEBUG = False
 
 def writeNumOfSpacesToString(numSpaces):
     outputString = ""
@@ -51,7 +67,7 @@ def addGameDeclLine(SDLFileName, outputECFile):
 
     outputString = "game "
     outputString += schemeName
-    outputString += "_EF = {\n"
+    outputString += "_EF " + assignmentOperator_EC + " " + funcStartChar_EC + "\n"
 
     outputECFile.write(outputString)
 
@@ -85,7 +101,7 @@ def getAtLeastOneHashCallOrNot(inputSDLFile):
 
 def addGlobalVars(outputECFile):
     outputString = "  var " + secretKeyName_EC + " : int\n"
-    outputString += "  var queried : message list\n"
+    outputString += "  var " + queriedName_EC + " : message list\n"
     outputECFile.write(outputString)
 
 def addGlobalVarsForHashes(outputECFile):
@@ -121,6 +137,16 @@ def getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo):
 
     return False
 
+def getVarTypeFromVarName_EC(varName, funcName):
+    if DEBUG : print("getVarTypeFromVarName_EC:  varName and funcName are ", varName, " and ", funcName)
+
+    varType_SDL = getVarTypeFromVarName(varName, funcName, False, False)
+    if (varType_SDL == types.NO_TYPE):
+        sys.exit("getVarTypeFromVarName_EC in SDLtoECConvert.py:  getVarTypeFromVarName returned types.NO_TYPE for variable name " + str(varName) + " and function name " + str(funcName) + ".")
+
+    varType_EC = convertGroupTypeSDLtoEC(varType_SDL)
+    return varType_EC
+
 def writeVarDecls(outputECFile, oldFuncName, assignInfo):
     if (oldFuncName not in assignInfo):
         sys.exit("writeVarDecls in SDLtoECConvert.py:  oldFuncName not in assignInfo.")
@@ -131,22 +157,21 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo):
         if ( (varName == inputKeyword) or (varName == outputKeyword) ):
             continue
 
-        varType_SDL = getVarTypeFromVarName(varName, oldFuncName, False, False)
-        varType_EC = convertGroupTypeSDLtoEC(varType_SDL)
+        varType_EC = getVarTypeFromVarName_EC(varName, oldFuncName)
 
         outputString += "    var " + varName + " : " + varType_EC + ";\n"
 
     if (len(outputString) > 0):
         outputECFile.write(outputString)
 
-def writeBodyOfFunc(outputECFile, oldFuncName, astNodes):
+def writeBodyOfFunc(outputECFile, oldFuncName, astNodes, config):
     startLineNoOfFunc = getStartLineNoOfFunc(oldFuncName)
     endLineNoOfFunc = getEndLineNoOfFunc(oldFuncName)
 
     startLineNoOfBody = startLineNoOfFunc + 2
     endLineNoOfBody = endLineNoOfFunc - 2
 
-    writeAstNodesToFile(outputECFile, astNodes, startLineNoOfBody, endLineNoOfBody)
+    writeAstNodesToFile(outputECFile, astNodes, startLineNoOfBody, endLineNoOfBody, config)
 
 def isAssignStmt(astNode):
     if (astNode.type == ops.EQ):
@@ -154,17 +179,42 @@ def isAssignStmt(astNode):
 
     return False
 
-def getAssignStmtAsString(astNode):
-    if (astNode.type == ops.ATTR):
-        return str(astNode)
-    elif (astNode.type == ops.EXP):
-        leftSide = getAssignStmtAsString(astNode.left)
-        rightSide = getAssignStmtAsString(astNode.right)
-        return "(" + leftSide + " ^ " + rightSide + ")"
-    else:
-        sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  could not handle this type of node (" + str(astNode) + ").  Need to add more logic to support it.")
+def makeSDLtoECVarNameReplacements(attrAsString, config):
+    if (attrAsString == config.messageName_SDL):
+        return messageName_EC
+    if (attrAsString == config.secretKeyName_SDL):
+        return secretKeyName_EC
+    return attrAsString
 
-def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo):
+def getAssignStmtAsString(astNode, config):
+    if (astNode.type == ops.ATTR):
+        attrAsString = str(astNode)
+        attrAsString = makeSDLtoECVarNameReplacements(attrAsString, config)
+        return attrAsString
+    elif (astNode.type == ops.TYPE):
+        groupTypeAsString = str(astNode)
+        if (groupTypeAsString not in validGroupTypes):
+            sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received node of type ops.TYPE, but it is not a valid type.")
+        return groupTypeAsString
+    elif (astNode.type == ops.EXP):
+        leftSide = getAssignStmtAsString(astNode.left, config)
+        rightSide = getAssignStmtAsString(astNode.right, config)
+        return "(" + leftSide + " " + expOp_EC + " " + rightSide + ")"
+    elif (astNode.type == ops.EQ):
+        leftSide = getAssignStmtAsString(astNode.left, config)
+        rightSide = getAssignStmtAsString(astNode.right, config)
+        return leftSide + " " + assignmentOperator_EC + " " + rightSide
+    elif (astNode.type == ops.HASH):
+        leftSide = getAssignStmtAsString(astNode.left, config)
+        rightSide = getAssignStmtAsString(astNode.right, config)
+        if (rightSide not in validHashGroupTypes):
+            sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received invalid type for hash call.")
+        #return hashFuncName_EC + "(" + leftSide + ", " + rightSide + ")"
+        return "(" + hashFuncName_EC + "(" + leftSide + "))"
+    else:
+        sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  could not handle this type (" + str(astNode.type) + ") of node (" + str(astNode) + ").  Need to add more logic to support it.")
+
+def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config):
     outputString = ""
     currentNumSpaces = 4
 
@@ -172,17 +222,60 @@ def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo):
         currentAstNode = astNodes[(lineNo - 1)]
         outputString += writeNumOfSpacesToString(currentNumSpaces)
         if (isAssignStmt(currentAstNode) == True):
-            outputString += getAssignStmtAsString(currentAstNode)
+            outputString += getAssignStmtAsString(currentAstNode, config)
+            outputString += endOfLineOperator_EC
         else:
             sys.exit("writeAstNodesToFile in SDLtoECConvert.py:  cannot handle this type of AST node.  Need to add logic to support it.")
         outputString += "\n"
 
     outputECFile.write(outputString)
 
+def writeMessageAdditionToQueriedList(outputECFile):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(4)
+    outputString += queriedName_EC + " " + assignmentOperator_EC + " "
+    outputString += messageName_EC + " " + appendOperator_EC + " "
+    outputString += queriedName_EC + endOfLineOperator_EC + "\n"
+
+    outputECFile.write(outputString)
+
+def writeReturnValue(outputECFile, funcName, assignInfo):
+    if (funcName not in assignInfo):
+        sys.exit("writeReturnValue in SDLtoECConvert.py:  funcName parameter passed in is not in assignInfo parameter passed in.")
+
+    if (outputKeyword not in assignInfo[funcName]):
+        sys.exit("writeReturnValue in SDLtoECConvert.py:  outputKeyword not in assignInfo[funcName].")
+
+    outputVarInfoObj = assignInfo[funcName][outputKeyword]
+
+    outputVarDeps = outputVarInfoObj.getVarDeps()
+    if (len(outputVarDeps) != 1):
+        sys.exit("writeReturnValue in SDLtoECConvert.py:  variable dependencies of output keyword does not consist of a list of one element, which is what is expected.")
+
+    outputString = ""
+    outputString += writeNumOfSpacesToString(4)
+    outputString += returnKeyword_EC + " "
+    outputString += str(outputVarDeps[0]) + endOfLineOperator_EC + "\n"
+
+    outputECFile.write(outputString)
+
+def writeFuncEnd(outputECFile):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(2)
+    outputString += funcEndChar_EC + "\n\n"
+
+    outputECFile.write(outputString)
+
 def convertSignFunc(outputECFile, config, assignInfo, astNodes):
-    writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config)
+    writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config, assignInfo)
     writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo)
-    writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes)
+    writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes, config)
+    writeMessageAdditionToQueriedList(outputECFile)
+    writeReturnValue(outputECFile, config.signFuncName_SDL, assignInfo)
+    writeFuncEnd(outputECFile)
+
+def convertVerifyFunc(outputECFile, config, assignInfo, astNodes):
+    writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo)
 
 def getTypeOfOutputVar(funcName):
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
@@ -190,8 +283,10 @@ def getTypeOfOutputVar(funcName):
     if (len(outputVars) != 1):
         sys.exit("getTypeOfOutputVar in SDLtoECConvert.py:  number of output variables of function is unequal to one; not supported.")
 
-    outputType_SDL = getVarTypeFromVarName(outputVars[0], funcName, False, False)
-    outputType_EC = convertGroupTypeSDLtoEC(outputType_SDL)
+    if (outputVars[0] == "False"):
+        return booleanType_EC
+
+    outputType_EC = getVarTypeFromVarName_EC(outputVars[0], funcName)
     return outputType_EC
 
 def convertGroupTypeSDLtoEC(outputType_SDL):
@@ -202,25 +297,27 @@ def convertGroupTypeSDLtoEC(outputType_SDL):
     if (outputType_SDL == types.GT):
         return "G_T"
 
-    sys.exit("convertGroupTypeSDLtoEC in SDLtoECConvert.py:  outputType_SDL is not of a type we support; need to add more logic to support it.")
+    sys.exit("convertGroupTypeSDLtoEC in SDLtoECConvert.py:  outputType_SDL " + str(outputType_SDL) + " is not of a type we support; need to add more logic to support it.")
 
-def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config):
+def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config, assignInfo):
     outputString = ""
     outputString += "  fun " + newFuncName + "("
-    outputString += getLineOfInputParams(oldFuncName, config)
+    outputString += getLineOfInputParams(oldFuncName, config, assignInfo)
     outputString += ") : "
     outputString += getTypeOfOutputVar(oldFuncName)
-    outputString += " = {\n"
+    outputString += " " + assignmentOperator_EC + " " + funcStartChar_EC + "\n"
 
     outputECFile.write(outputString)
 
-def getLineOfInputParams(funcName, config):
+def getLineOfInputParams(funcName, config, assignInfo):
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
     
     outputString = ""
 
     for varName in inputOutputVarsDict[inputKeyword]:
-        outputString += getECVarNameAndTypeFromSDLName(varName, config)
+        if DEBUG : print("getLineOfInputParams:  variable name is ", str(varName))
+
+        outputString += getECVarNameAndTypeFromSDLName(varName, config, assignInfo, funcName)
         if (len(outputString) > 0):
             outputString += ", "
 
@@ -231,16 +328,53 @@ def getLineOfInputParams(funcName, config):
 
     return outputString
 
-def getECVarNameAndTypeFromSDLName(varName, config):
+def getECVarNameAndTypeFromSDLName(varName, config, assignInfo, funcName):
+
+    if (funcName not in assignInfo):
+        sys.exit("getECVarNameAndTypeFromSDLName in SDLtoECConvert.py:  funcName not in assignInfo.")
+
+    #if (varName not in assignInfo[funcName][varName]):
+        #sys.exit("getECVarNameAndTypeFromSDLName in SDLtoECConvert.py:  varName not in assignInfo[funcName].")
+
+    #in EC, secret key is global, so no need to declare it here
     if (varName == config.secretKeyName_SDL):
         return ""
 
     if (varName == config.messageName_SDL):
         return messageName_EC + " : " + messageType_EC
 
-    sys.exit("getECVarNameAndTypeFromSDLName in SDLtoECConvert.py:  could not handle case of varName passed in.  Need to add more logic for it.")
+    if DEBUG : print("getECVarNameAndTypeFromSDLName:  varName and funcName are ", varName, " and ", funcName)
 
-def main(inputSDLFileName, outputECFileName):
+    varType_EC = getVarTypeFromVarName_EC(varName, funcName)
+
+    return varName + " : " + varType_EC
+
+    sys.exit("getECVarNameAndTypeFromSDLName in SDLtoECConvert.py:  could not handle case of varName (" + str(varName) + ") passed in.  Need to add more logic for it.")
+
+def addAdvAbstractDef(outputECFile, atLeastOneHashCall):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(2)
+    outputString += abstractKeyword_EC + " " + adversaryIdentifier_EC + " "
+    outputString += assignmentOperator_EC + " " + adversarySignatureIdentifier_EC + funcStartChar_EC
+
+    if (atLeastOneHashCall == True):
+        outputString += hashFuncName_EC + ", "
+
+    outputString += signFuncName_EC + funcEndChar_EC + "\n\n"
+
+    outputECFile.write(outputString)
+
+def main(inputSDLFileName, outputECFileName, debugOrNot):
+    global DEBUG
+
+    if (debugOrNot == "True"):
+        DEBUG = True
+    elif (debugOrNot == "False"):
+        DEBUG = False
+    else:
+        sys.exit("main in SDLtoECConvert.py:  DEBUG parameter from command line was specified incorrectly (two options are True and False).")
+
+
     inputSDLFile = open(inputSDLFileName, 'r')
     outputECFile = open(outputECFileName, 'w')
 
@@ -260,16 +394,20 @@ def main(inputSDLFileName, outputECFileName):
 
     convertSignFunc(outputECFile, config, assignInfo, astNodes)
 
+    addAdvAbstractDef(outputECFile, atLeastOneHashCall)
+
+    convertVerifyFunc(outputECFile, config, assignInfo, astNodes)
+
     inputSDLFile.close()
     outputECFile.close()
 
 if __name__ == "__main__":
     lenSysArgv = len(sys.argv)
 
-    if ( (lenSysArgv < 3) or (lenSysArgv > 3) ):
-        sys.exit("Usage:  python " + sys.argv[0] + " [name of input SDL file] [name of output EasyCrypt file]")
+    if ( (lenSysArgv < 4) or (lenSysArgv > 4) ):
+        sys.exit("Usage:  python " + sys.argv[0] + " [name of input SDL file] [name of output EasyCrypt file] [Print DEBUG info (True or False)]]")
 
     if ( (sys.argv[1] == "-help") or (sys.argv[1] == "--help") ):
-        sys.exit("Usage:  python " + sys.argv[0] + " [name of input SDL file] [name of output EasyCrypt file]")
+        sys.exit("Usage:  python " + sys.argv[0] + " [name of input SDL file] [name of output EasyCrypt file] [Print DEBUG info (True or False)]")
 
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3])
