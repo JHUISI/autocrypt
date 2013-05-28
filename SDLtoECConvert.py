@@ -2,6 +2,7 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+numSpacesForIndent = 2
 templateFileName = "ECTemplate.txt"
 configFileName = "SDLtoECConfig"
 booleanType_EC = "bool"
@@ -25,6 +26,7 @@ returnKeyword_EC = "return"
 multOp_EC = "*"
 expOp_EC = "^"
 endOfLineOperator_EC = ";"
+eqTstOperator_EC = "="
 validGroupTypes = ["G1", "G2", "GT", "ZR"]
 validHashGroupTypes = ["G1", "G2", "ZR"]
 
@@ -170,6 +172,8 @@ def writeBodyOfFunc(outputECFile, oldFuncName, astNodes, config):
     startLineNoOfFunc = getStartLineNoOfFunc(oldFuncName)
     endLineNoOfFunc = getEndLineNoOfFunc(oldFuncName)
 
+    print(oldFuncName, " ", endLineNoOfFunc)
+
     startLineNoOfBody = startLineNoOfFunc + 2
     endLineNoOfBody = endLineNoOfFunc - 2
 
@@ -202,10 +206,18 @@ def getAssignStmtAsString(astNode, config):
         leftSide = getAssignStmtAsString(astNode.left, config)
         rightSide = getAssignStmtAsString(astNode.right, config)
         return "(" + leftSide + " " + expOp_EC + " " + rightSide + ")"
+    elif (astNode.type == ops.PAIR):
+        leftSide = getAssignStmtAsString(astNode.left, config)
+        rightSide = getAssignStmtAsString(astNode.right, config)
+        return "e(" + leftSide + ", " + rightSide + ")"
     elif (astNode.type == ops.EQ):
         leftSide = getAssignStmtAsString(astNode.left, config)
         rightSide = getAssignStmtAsString(astNode.right, config)
         return leftSide + " " + assignmentOperator_EC + " " + rightSide
+    elif (astNode.type == ops.EQ_TST):
+        leftSide = getAssignStmtAsString(astNode.left, config)
+        rightSide = getAssignStmtAsString(astNode.right, config)
+        return leftSide + " " + eqTstOperator_EC + " " + rightSide
     elif (astNode.type == ops.HASH):
         leftSide = getAssignStmtAsString(astNode.left, config)
         rightSide = getAssignStmtAsString(astNode.right, config)
@@ -216,16 +228,84 @@ def getAssignStmtAsString(astNode, config):
     else:
         sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  could not handle this type (" + str(astNode.type) + ") of node (" + str(astNode) + ").  Need to add more logic to support it.")
 
+def isUnnecessaryNode(astNode):
+    if ( (astNode.type == ops.BEGIN) and (astNode.left.attr == IF_BRANCH_HEADER) ):
+        return True
+
+    return False
+
+def isIfStmtStart(astNode):
+    if (astNode.type == ops.IF):
+        return True
+
+    return False
+
+def getIfStmtDecl(astNode, config):
+    outputString = ""
+
+    outputString += "if("
+    outputString += getAssignStmtAsString(astNode.left, config)
+    outputString += ") {"
+
+    return outputString
+
+def getIfStmtEnd(astNode):
+    return "}"
+
+def isIfStmtEnd(astNode):
+    print(astNode)
+
+    if ( (astNode.type == ops.END) and (astNode.left.attr == IF_BRANCH_HEADER) ):
+        print("here!!")
+        return True
+
+    return False
+
+def isElseStmtStart(astNode):
+    if (astNode.type == ops.ELSE):
+        return True
+
+    return False
+
+def getElseStmtStart(astNode, config):
+    outputString = ""
+
+    if (astNode.left == None):
+        outputString += "else {"
+    else:
+        outputString += "else if ("
+        outputString += getAssignStmtAsString(astNode.left, config)
+        outputString += ") {"
+
+    return outputString
+
 def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config):
     outputString = ""
-    currentNumSpaces = 4
+    currentNumSpaces = (numSpacesForIndent * 2)
 
     for lineNo in range(startLineNo, (endLineNo + 1)):
         currentAstNode = astNodes[(lineNo - 1)]
-        outputString += writeNumOfSpacesToString(currentNumSpaces)
+        print(currentAstNode)
         if (isAssignStmt(currentAstNode) == True):
+            outputString += writeNumOfSpacesToString(currentNumSpaces)
             outputString += getAssignStmtAsString(currentAstNode, config)
             outputString += endOfLineOperator_EC
+        elif (isIfStmtStart(currentAstNode) == True):
+            outputString += writeNumOfSpacesToString(currentNumSpaces)
+            outputString += getIfStmtDecl(currentAstNode, config)
+            currentNumSpaces += numSpacesForIndent
+        elif (isIfStmtEnd(currentAstNode) == True):
+            print("here!!!!")
+            currentNumSpaces -= numSpacesForIndent
+            outputString += writeNumOfSpacesToString(currentNumSpaces)
+            outputString += getIfStmtEnd(currentAstNode)
+        elif (isElseStmtStart(currentAstNode) == True):
+            currentNumSpaces -= numSpacesForIndent
+            outputString += writeNumOfSpacesToString(currentNumSpaces)
+            outputString += getElseStmtStart(currentAstNode, config)
+            currentNumSpaces += numSpacesForIndent
+        elif (isUnnecessaryNode(currentAstNode) == True):
+            continue
         else:
             sys.exit("writeAstNodesToFile in SDLtoECConvert.py:  cannot handle this type of AST node (" + str(currentAstNode) + ").  Need to add logic to support it.")
         outputString += "\n"
@@ -234,7 +314,7 @@ def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config):
 
 def writeMessageAdditionToQueriedList(outputECFile):
     outputString = ""
-    outputString += writeNumOfSpacesToString(4)
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += queriedName_EC + " " + assignmentOperator_EC + " "
     outputString += messageName_EC + " " + appendOperator_EC + " "
     outputString += queriedName_EC + endOfLineOperator_EC + "\n"
@@ -255,7 +335,7 @@ def writeReturnValue(outputECFile, funcName, assignInfo):
         sys.exit("writeReturnValue in SDLtoECConvert.py:  variable dependencies of output keyword does not consist of a list of one element, which is what is expected.")
 
     outputString = ""
-    outputString += writeNumOfSpacesToString(4)
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += returnKeyword_EC + " "
     outputString += str(outputVarDeps[0]) + endOfLineOperator_EC + "\n"
 
@@ -263,14 +343,14 @@ def writeReturnValue(outputECFile, funcName, assignInfo):
 
 def writeFuncEnd(outputECFile):
     outputString = ""
-    outputString += writeNumOfSpacesToString(2)
+    outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += funcEndChar_EC + "\n\n"
 
     outputECFile.write(outputString)
 
 def addBoolRetVarForVerifyFunc(outputECFile):
     outputString = ""
-    outputString += writeNumOfSpacesToString(4)
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += varKeyword_EC + " " + varNameForVerifyBoolRetVal_EC + " : "
     outputString += booleanType_EC + endOfLineOperator_EC + "\n"
 
@@ -366,7 +446,7 @@ def getECVarNameAndTypeFromSDLName(varName, config, assignInfo, funcName):
 
 def addAdvAbstractDef(outputECFile, atLeastOneHashCall):
     outputString = ""
-    outputString += writeNumOfSpacesToString(2)
+    outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += abstractKeyword_EC + " " + adversaryIdentifier_EC + " "
     outputString += assignmentOperator_EC + " " + adversarySignatureIdentifier_EC + funcStartChar_EC
 
