@@ -172,10 +172,8 @@ def writeBodyOfFunc(outputECFile, oldFuncName, astNodes, config):
     startLineNoOfFunc = getStartLineNoOfFunc(oldFuncName)
     endLineNoOfFunc = getEndLineNoOfFunc(oldFuncName)
 
-    print(oldFuncName, " ", endLineNoOfFunc)
-
     startLineNoOfBody = startLineNoOfFunc + 2
-    endLineNoOfBody = endLineNoOfFunc - 2
+    endLineNoOfBody = endLineNoOfFunc - 1
 
     writeAstNodesToFile(outputECFile, astNodes, startLineNoOfBody, endLineNoOfBody, config)
 
@@ -224,7 +222,7 @@ def getAssignStmtAsString(astNode, config):
         if (rightSide not in validHashGroupTypes):
             sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received invalid type for hash call.")
         #return hashFuncName_EC + "(" + leftSide + ", " + rightSide + ")"
-        return "(" + hashFuncName_EC + "(" + leftSide + "))"
+        return hashFuncName_EC + "(" + leftSide + ")"
     else:
         sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  could not handle this type (" + str(astNode.type) + ") of node (" + str(astNode) + ").  Need to add more logic to support it.")
 
@@ -253,10 +251,7 @@ def getIfStmtEnd(astNode):
     return "}"
 
 def isIfStmtEnd(astNode):
-    print(astNode)
-
     if ( (astNode.type == ops.END) and (astNode.left.attr == IF_BRANCH_HEADER) ):
-        print("here!!")
         return True
 
     return False
@@ -285,7 +280,6 @@ def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config):
 
     for lineNo in range(startLineNo, (endLineNo + 1)):
         currentAstNode = astNodes[(lineNo - 1)]
-        print(currentAstNode)
         if (isAssignStmt(currentAstNode) == True):
             outputString += writeNumOfSpacesToString(currentNumSpaces)
             outputString += getAssignStmtAsString(currentAstNode, config)
@@ -295,12 +289,13 @@ def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config):
             outputString += getIfStmtDecl(currentAstNode, config)
             currentNumSpaces += numSpacesForIndent
         elif (isIfStmtEnd(currentAstNode) == True):
-            print("here!!!!")
             currentNumSpaces -= numSpacesForIndent
             outputString += writeNumOfSpacesToString(currentNumSpaces)
             outputString += getIfStmtEnd(currentAstNode)
         elif (isElseStmtStart(currentAstNode) == True):
             currentNumSpaces -= numSpacesForIndent
+            outputString += writeNumOfSpacesToString(currentNumSpaces)
+            outputString += "}\n"
             outputString += writeNumOfSpacesToString(currentNumSpaces)
             outputString += getElseStmtStart(currentAstNode, config)
             currentNumSpaces += numSpacesForIndent
