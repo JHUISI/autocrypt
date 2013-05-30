@@ -104,6 +104,7 @@ game blsfull_EF = {
 
   fun Sign(m : message) : G_1 = {
     var sig : G_1;
+    var output : G_1;
     sig = (Hash(m) ^ secret_key);
     output = sig;
     queried = m :: queried;
@@ -113,6 +114,7 @@ game blsfull_EF = {
   abs A = Adv{Hash, Sign}
 
   fun Verify(pk : G_1, m : message, sig : G_1, g : G_1) : bool = {
+    var output : bool;
     var h : G_1;
     var v : bool;
     h = Hash(m);
@@ -122,3 +124,6 @@ game blsfull_EF = {
     else {
       output = False;
     }
+    return output;
+  }
+

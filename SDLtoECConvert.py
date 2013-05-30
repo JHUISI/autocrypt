@@ -2,6 +2,8 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+trueKeyword_SDL = "True"
+falseKeyword_SDL = "False"
 numSpacesForIndent = 2
 templateFileName = "ECTemplate.txt"
 configFileName = "SDLtoECConfig"
@@ -148,7 +150,7 @@ def getVarTypeFromVarName_EC(varName, funcName):
     if (varType_SDL == types.NO_TYPE):
         sys.exit("getVarTypeFromVarName_EC in SDLtoECConvert.py:  getVarTypeFromVarName returned types.NO_TYPE for variable name " + str(varName) + " and function name " + str(funcName) + ".")
 
-    varType_EC = convertGroupTypeSDLtoEC(varType_SDL)
+    varType_EC = convertTypeSDLtoEC(varType_SDL)
     return varType_EC
 
 def writeVarDecls(outputECFile, oldFuncName, assignInfo):
@@ -158,7 +160,14 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo):
     outputString = ""
 
     for varName in assignInfo[oldFuncName]:
-        if ( (varName == inputKeyword) or (varName == outputKeyword) ):
+        if (varName == inputKeyword):
+            continue
+
+        #for some reason, SDLParser says variables of type "bool" are actually of type "int".
+        #Here's a workaround to fix that
+        assignNodeRight = str(assignInfo[oldFuncName][varName].getAssignNode().right)
+        if ( (assignNodeRight == trueKeyword_SDL) or (assignNodeRight == falseKeyword_SDL) ):
+            outputString += "    " + varKeyword_EC + " " + varName + " : " + booleanType_EC + ";\n"
             continue
 
         varType_EC = getVarTypeFromVarName_EC(varName, oldFuncName)
@@ -326,13 +335,18 @@ def writeReturnValue(outputECFile, funcName, assignInfo):
     outputVarInfoObj = assignInfo[funcName][outputKeyword]
 
     outputVarDeps = outputVarInfoObj.getVarDeps()
-    if (len(outputVarDeps) != 1):
-        sys.exit("writeReturnValue in SDLtoECConvert.py:  variable dependencies of output keyword does not consist of a list of one element, which is what is expected.")
+
+    if ( (len(outputVarDeps) != 1) and (outputVarDeps != [trueKeyword_SDL, falseKeyword_SDL]) ):
+        sys.exit("writeReturnValue in SDLtoECConvert.py:  variable dependencies of output keyword does not consist of a list of one element OR a list of [\"True\", \"False\"], which is what is expected.")
 
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += returnKeyword_EC + " "
-    outputString += str(outputVarDeps[0]) + endOfLineOperator_EC + "\n"
+
+    if (len(outputVarDeps) == 1):
+        outputString += str(outputVarDeps[0]) + endOfLineOperator_EC + "\n"
+    else:
+        outputString += outputKeyword + endOfLineOperator_EC + "\n"
 
     outputECFile.write(outputString)
 
@@ -364,6 +378,8 @@ def convertVerifyFunc(outputECFile, config, assignInfo, astNodes):
     writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo)
     addBoolRetVarForVerifyFunc(outputECFile)
     writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config)
+    writeReturnValue(outputECFile, config.verifyFuncName_SDL, assignInfo)
+    writeFuncEnd(outputECFile)
 
 def getTypeOfOutputVar(funcName):
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
@@ -377,15 +393,17 @@ def getTypeOfOutputVar(funcName):
     outputType_EC = getVarTypeFromVarName_EC(outputVars[0], funcName)
     return outputType_EC
 
-def convertGroupTypeSDLtoEC(outputType_SDL):
+def convertTypeSDLtoEC(outputType_SDL):
     if (outputType_SDL == types.G1):
         return "G_1"
     if (outputType_SDL == types.G2):
         return "G_1"
     if (outputType_SDL == types.GT):
         return "G_T"
+    if (outputType_SDL == types.int):
+        return "int"
 
-    sys.exit("convertGroupTypeSDLtoEC in SDLtoECConvert.py:  outputType_SDL " + str(outputType_SDL) + " is not of a type we support; need to add more logic to support it.")
+    sys.exit("convertTypeSDLtoEC in SDLtoECConvert.py:  outputType_SDL " + str(outputType_SDL) + " is not of a type we support; need to add more logic to support it.")
 
 def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config, assignInfo):
     outputString = ""
