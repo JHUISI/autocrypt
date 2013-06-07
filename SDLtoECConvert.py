@@ -2,6 +2,7 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+funcName_EC = "fun"
 trueKeyword_SDL = "True"
 falseKeyword_SDL = "False"
 numSpacesForIndent = 2
@@ -129,7 +130,7 @@ def addStatementsForPresenceOfHashes(outputECFile):
     addHashFuncDef(outputECFile)
 
 def getInputSDLFileMetadata(inputSDLFileName):
-    parseFile2(inputSDLFileName, False, True)
+    parseFile(inputSDLFileName, False, True)
     assignInfo = getAssignInfo()
     astNodes = getAstNodes()
     return (assignInfo, astNodes)
@@ -224,7 +225,7 @@ def getAssignStmtAsString(astNode, config):
     elif (astNode.type == ops.EQ_TST):
         leftSide = getAssignStmtAsString(astNode.left, config)
         rightSide = getAssignStmtAsString(astNode.right, config)
-        return leftSide + " " + eqTstOperator_EC + " " + rightSide
+        return "(" + leftSide + " " + eqTstOperator_EC + " " + rightSide + ")"
     elif (astNode.type == ops.HASH):
         leftSide = getAssignStmtAsString(astNode.left, config)
         rightSide = getAssignStmtAsString(astNode.right, config)
@@ -271,6 +272,12 @@ def isElseStmtStart(astNode):
 
     return False
 
+def isNONENode(astNode):
+    if (astNode.type == ops.NONE):
+        return True
+
+    return False
+
 def getElseStmtStart(astNode, config):
     outputString = ""
 
@@ -310,6 +317,8 @@ def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config):
             currentNumSpaces += numSpacesForIndent
         elif (isUnnecessaryNode(currentAstNode) == True):
             continue
+        elif (isNONENode(currentAstNode) == True):
+            continue
         else:
             sys.exit("writeAstNodesToFile in SDLtoECConvert.py:  cannot handle this type of AST node (" + str(currentAstNode) + ").  Need to add logic to support it.")
         outputString += "\n"
@@ -332,21 +341,27 @@ def writeReturnValue(outputECFile, funcName, assignInfo):
     if (outputKeyword not in assignInfo[funcName]):
         sys.exit("writeReturnValue in SDLtoECConvert.py:  outputKeyword not in assignInfo[funcName].")
 
+    '''
     outputVarInfoObj = assignInfo[funcName][outputKeyword]
 
     outputVarDeps = outputVarInfoObj.getVarDeps()
 
     if ( (len(outputVarDeps) != 1) and (outputVarDeps != [trueKeyword_SDL, falseKeyword_SDL]) ):
         sys.exit("writeReturnValue in SDLtoECConvert.py:  variable dependencies of output keyword does not consist of a list of one element OR a list of [\"True\", \"False\"], which is what is expected.")
+    '''
 
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += returnKeyword_EC + " "
 
+    '''
     if (len(outputVarDeps) == 1):
         outputString += str(outputVarDeps[0]) + endOfLineOperator_EC + "\n"
     else:
         outputString += outputKeyword + endOfLineOperator_EC + "\n"
+    '''
+
+    outputString += outputKeyword + endOfLineOperator_EC + "\n"
 
     outputECFile.write(outputString)
 
@@ -376,12 +391,13 @@ def convertSignFunc(outputECFile, config, assignInfo, astNodes):
 def convertVerifyFunc(outputECFile, config, assignInfo, astNodes):
     writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo)
     writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo)
-    addBoolRetVarForVerifyFunc(outputECFile)
+    #addBoolRetVarForVerifyFunc(outputECFile)
     writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config)
     writeReturnValue(outputECFile, config.verifyFuncName_SDL, assignInfo)
     writeFuncEnd(outputECFile)
 
-def getTypeOfOutputVar(funcName):
+def getTypeOfOutputVar(funcName, assignInfo):
+    '''
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
     outputVars = inputOutputVarsDict[outputKeyword]
     if (len(outputVars) != 1):
@@ -392,6 +408,14 @@ def getTypeOfOutputVar(funcName):
 
     outputType_EC = getVarTypeFromVarName_EC(outputVars[0], funcName)
     return outputType_EC
+    '''
+    if (funcName not in assignInfo):
+        sys.exit("getTypeOfOutputVar in SDLtoECConvert.py:  function name parameter passed in is not in assignInfo parameter passed in.")
+
+    if (outputKeyword not in assignInfo[funcName]):
+        sys.exit("getTypeOfOutputVar in SDLtoECConvert.py:  output keyword is not in assignInfo[funcName] parameters passed in.")
+ 
+    return getVarTypeFromVarName_EC(outputKeyword, funcName)
 
 def convertTypeSDLtoEC(outputType_SDL):
     if (outputType_SDL == types.G1):
@@ -402,15 +426,18 @@ def convertTypeSDLtoEC(outputType_SDL):
         return "G_T"
     if (outputType_SDL == types.int):
         return "int"
+    if (outputType_SDL == types.bool):
+        return booleanType_EC
 
     sys.exit("convertTypeSDLtoEC in SDLtoECConvert.py:  outputType_SDL " + str(outputType_SDL) + " is not of a type we support; need to add more logic to support it.")
 
 def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config, assignInfo):
     outputString = ""
-    outputString += "  fun " + newFuncName + "("
+    outputString += writeNumOfSpacesToString(numSpacesForIndent)
+    outputString += funcName_EC + " " + newFuncName + "("
     outputString += getLineOfInputParams(oldFuncName, config, assignInfo)
     outputString += ") : "
-    outputString += getTypeOfOutputVar(oldFuncName)
+    outputString += getTypeOfOutputVar(oldFuncName, assignInfo)
     outputString += " " + assignmentOperator_EC + " " + funcStartChar_EC + "\n"
 
     outputECFile.write(outputString)
@@ -470,6 +497,13 @@ def addAdvAbstractDef(outputECFile, atLeastOneHashCall):
 
     outputECFile.write(outputString)
 
+def writeInitFunc(outputECFile):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent)
+    outputString += funcName_EC + " Init() : " + booleanType_EC + " = {\n"
+
+    outputECFile.write(outputString)
+
 def main(inputSDLFileName, outputECFileName, debugOrNot):
     global DEBUG
 
@@ -503,6 +537,8 @@ def main(inputSDLFileName, outputECFileName, debugOrNot):
     addAdvAbstractDef(outputECFile, atLeastOneHashCall)
 
     convertVerifyFunc(outputECFile, config, assignInfo, astNodes)
+
+    writeInitFunc(outputECFile)
 
     inputSDLFile.close()
     outputECFile.close()
