@@ -151,6 +151,7 @@ game G_Inv_Sign = BLS_EF
 
 var hashes : (message, G_1) map
 var sigs : (message, G_1) map
+var given_1 : G_1
 
   where Init = {
     secret_key = KG();
@@ -158,7 +159,8 @@ var sigs : (message, G_1) map
     queried = [];
     hashes = empty_map;
     sigs = empty_map;
-    return true;
+ 
+   return true;
   }
 
   and Hash = {
@@ -180,6 +182,24 @@ var sigs : (message, G_1) map
     s = sigs[m];
     queried = m :: queried;
     return s;
+  }
+
+  and Main = {
+    var pk : G_1;    
+    var m : message;
+    var h : G_1;
+    var s : G_1;
+    var v : bool;
+    var dummy : bool;
+
+    dummy=Init();
+    pk = g^secret_key;
+    given_1 = pk;
+
+    (m, s) = A(pk);
+
+    v = Verify(m, s, pk);
+    return v && !mem(m, queried);
   }
 .
 
@@ -263,29 +283,93 @@ rnd.
 trivial.
 save.
 
+(*
+   we made it so we can "sign" using the public key only
+   now we need to hijack one hash at random 
+*)
 
 
+  and Hash = {
+    var exp : int;
 
-={m,secret_key,queried} && rand_oracle{1}=hashes{2} &&
-  (forall (m_0:message), in_dom(m_0,hashes{2}) =>
-    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
-  ={res,secret_key,queried} && rand_oracle{1}=hashes{2} &&
-  (forall (m_0:message), in_dom(m_0,hashes{2}) =>
-    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
+    if(!in_dom(m, hashes)) {
+      exp=[0..q];
+
+      hashes[m]=g_1_i^exp;      
+      sigs[m]=hashes[m]^secret_key;
+    }
+    return hashes[m];
+  }
+
+  and Sign = {
+    var h : G_1;
+    var s : G_1;
+    h = Hash(m);
+    s = sigs[m];
+    queried = m :: queried;
+    return s;
+  }
+.
 
 
-(* we made it so we can now invert signatures to provide a hash; now
-  we need to hijack one hash at random *)
+  where Init = {
+    secret_key = KG();
+    rand_oracle = empty_map;
+    queried = [];
+    hashes = empty_map;
+    sigs = empty_map;
+ 
+   return true;
+  }
 
-(* need to figure out how this proof works, need to understand what the adversary "knows" or that the algorithm can use *)
+  and Hash = {
+    var exp : int;
+
+    if(!in_dom(m, hashes)) {
+      exp=[0..q];
+
+      hashes[m]=g_1_i^exp;      
+      sigs[m]=hashes[m]^secret_key;
+    }
+    return hashes[m];
+  }
+
+  and Sign = {
+    var h : G_1;
+    var s : G_1;
+    h = Hash(m);
+    s = sigs[m];
+    queried = m :: queried;
+    return s;
+  }
+
+  and Main = {
+    var pk : G_1;    
+    var m : message;
+    var h : G_1;
+    var s : G_1;
+    var v : bool;
+    var dummy : bool;
+
+    dummy=Init();
+    pk = g^secret_key;
+    given_1 = pk;
+
+    (m, s) = A(pk);
+
+    v = Verify(m, s, pk);
+    return v && !mem(m, queried);
+  }
+
+
 
 game G_ChooseOne = G_Inv_Sign
 var n_inject : int;
 var n_hash : int;
-var given_1 : G_1;
+var given_2 : G_1;
 
   where Init = {
-    var a : int;
+    var b : int;
 
     secret_key = KG();
     rand_oracle = empty_map;
@@ -294,8 +378,8 @@ var given_1 : G_1;
     sigs = empty_map;
     n_inject = [0..queries];
     n_hash = 0;
-    a = [0..q-1];
-    given_1 = g^a;
+    b = [0..q-1];
+    given_2 = g^b;
     return true;
   }
 
@@ -304,11 +388,11 @@ var given_1 : G_1;
 
     if(!in_dom(m, hashes)) {
       if(n_hash = n_inject) {
-        hashes[m] = given_1
+        hashes[m] = given_2
       } else {
         exp=[0..q];
         hashes[m]=g_1_i^exp;      
-        sigs[m]=hashes[m]^secret_key;
+        sigs[m]=given_1^exp;
       }
       n_hash = n_hash + 1;
     }
@@ -502,6 +586,13 @@ sign(m) = pk^z
 
 (* a is analogous to the key in our game *)
 
+(* 
+   a ~ secret key
+   given_1 ~ public key
+   given_2 ~ the hijacked message
+*) 
+
+
 Game CDH_BLS = CDH_Generic
 
 var sigs : (message, G_1) map
@@ -513,7 +604,7 @@ where Before = {
   j=[0..queries];
   sigs=empty_map;
   hashes=empty_map;
-  return (null_state, g_1_i);
+  return (null_state, given_1);
 }
 
 where Hash = {
@@ -535,7 +626,8 @@ where Hash = {
 
 and Sign = {
   var h : G_1;
-
   h=Hash(m)
   return sigs[m];
 }.
+
+equiv CDH_BLS.Main ~ ...
