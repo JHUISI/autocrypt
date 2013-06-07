@@ -114,6 +114,7 @@ game blsfull_EF = {
   abs A = Adv{Hash, Sign}
 
   fun Verify(pk : G_1, m : message, sig : G_1, g : G_1) : bool = {
+    var test : G_T;
     var output : bool;
     var h : G_1;
     var v : bool;
@@ -124,6 +125,7 @@ game blsfull_EF = {
     else {
       output = False;
     }
+    test = e(h, pk) = e(sig, g);
     return output;
   }
 
