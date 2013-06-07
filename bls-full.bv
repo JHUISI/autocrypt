@@ -34,6 +34,7 @@ BEGIN :: func:verify
  else
  output := False
  END :: if
+ test := (e(h, pk) == e(sig, g))
 END :: func:verify
 
 constant := g

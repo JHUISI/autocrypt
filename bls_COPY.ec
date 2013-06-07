@@ -90,10 +90,10 @@ axiom Rand_G_1_def() : x = Rand_G_1() ~ y = [0..q] : true ==> x = g_1_i ^ y.
 
 adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; message -> G_1}.
 
-game blsfull_EF = {
+game BLS_EF = {
   var secret_key : int
-  var queried : message list
   var rand_oracle : (message, G_1) map
+  var queried : message list
 
   fun Hash(m : message) : G_1 = {
     if(!in_dom(m, rand_oracle)) {
@@ -101,31 +101,14 @@ game blsfull_EF = {
     }
     return rand_oracle[m];
   }
-
+  
   fun Sign(m : message) : G_1 = {
-    var sig : G_1;
-    var output : G_1;
-    sig = (Hash(m) ^ secret_key);
-    output = sig;
+    var h : G_1;
+    var s : G_1;
+    h = Hash(m);
+    s = h^secret_key;
     queried = m :: queried;
-    return sig;
+    return s;
   }
 
   abs A = Adv{Hash, Sign}
-
-  fun Verify(pk : G_1, m : message, sig : G_1, g : G_1) : bool = {
-    var test : G_T;
-    var output : bool;
-    var h : G_1;
-    var v : bool;
-    h = Hash(m);
-    if(e(h, pk) = e(sig, g)) {
-      output = True;
-    }
-    else {
-      output = False;
-    }
-    test = e(h, pk) = e(sig, g);
-    return output;
-  }
-
