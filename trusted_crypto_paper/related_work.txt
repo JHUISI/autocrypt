@@ -1,0 +1,50 @@
+Proof carrying code
+Necula, G. C. and Lee, P. 1996. Safe kernel extensions without run-time checking. SIGOPS Operating Systems Review 30, SI (Oct. 1996), 229?243.
+
+@inproceedings{necula_1998,
+ author = {Necula, George C. and Lee, Peter},
+ title = {Safe, Untrusted Agents Using Proof-Carrying Code},
+ booktitle = {Mobile Agents and Security},
+ year = {1998},
+ isbn = {3-540-64792-9},
+ pages = {61--91},
+ numpages = {31},
+ url = {http://dl.acm.org/citation.cfm?id=648051.746192},
+ acmid = {746192},
+ publisher = {Springer-Verlag},
+ address = {London, UK, UK},
+} 
+
+
+
+The concept of executable code that carries a proof of correctness was
+introduced by Necula and Lee \cite{necula_1996, necula_1998}.  They decribe "proof carrying
+code".  Unlike, our work, Necula and Lee's technique enables a system to
+directly verify safety properties about executables themselves,
+executables written for a DEC Alpha processor in particular.  The
+authors focus on proving and verifying lower-level properties of code
+like memory safety, but a method for
+proving and verifying higher-level algorithmic properties like the
+security of cryptographic schemes is not clear from their work.
+
+Necula and Lee's techinque often requires annotations by the
+programmer.  For example, loop invariants and call targets must be
+specified in some instances.
+
+They can also add run-time checks if a static proof cannot be
+obtained.
+
+The worst thing about these is the size of the proofs.  It can grow
+exponentially with the size of the code in the worst case when there
+are many conditionals without loop invariants between them.
+
+In necula 1998, they also enable it to prove things about runtime and
+network bandwidth usage.
+
+
+
+^Safety properties are translated to specific properties of the
+machine code using Floyd's verification condition generator.
+
+
+
