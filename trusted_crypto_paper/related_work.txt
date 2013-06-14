@@ -38,7 +38,7 @@ The worst thing about these is the size of the proofs.  It can grow
 exponentially with the size of the code in the worst case when there
 are many conditionals without loop invariants between them.
 
-In necula 1998, they also enable it to prove things about runtime and
+In necula_1998, they also enable it to prove things about runtime and
 network bandwidth usage.
 
 
