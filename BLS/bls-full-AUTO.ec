@@ -91,7 +91,8 @@ axiom Rand_G_1_def() : x = Rand_G_1() ~ y = [0..q] : true ==> x = g_1_i ^ y.
 adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; message -> G_1}.
 
 game blsfull_EF = {
-  var secret_key : int
+  var sk : Z_R
+  var pk : G_1
   var queried : message list
   var rand_oracle : (message, G_1) map
 
@@ -105,7 +106,7 @@ game blsfull_EF = {
   fun Sign(m : message) : G_1 = {
     var sig : G_1;
     var output : G_1;
-    sig = (Hash(m) ^ secret_key);
+    sig = (Hash(M) ^ sk);
     output = sig;
     queried = m :: queried;
     return output;
@@ -116,9 +117,16 @@ game blsfull_EF = {
   fun Verify(pk : G_1, m : message, sig : G_1, g : G_1) : bool = {
     var output : bool;
     var h : G_1;
-    h = Hash(m);
+    h = Hash(M);
     output = (e(h, pk) = e(sig, g));
     return output;
   }
 
   fun Init() : bool = {
+    var x : Z_R;
+    var g : G_1;
+    g = Rand_G_1();
+    x = Rand_Z_R();
+    pk = (g ^ x);
+    sk = x;
+    rand_oracle = empty_map;

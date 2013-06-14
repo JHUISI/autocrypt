@@ -2,12 +2,16 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+emptyMapName_EC = "empty_map"
+randomOracleVarName_EC = "rand_oracle"
+randomG1GenerationStmt_EC = "Rand_G_1()"
+randomZRGenerationStmt_EC = "Rand_Z_R()"
 funcName_EC = "fun"
 trueKeyword_SDL = "True"
 falseKeyword_SDL = "False"
 numSpacesForIndent = 2
 templateFileName = "ECTemplate.txt"
-configFileName = "SDLtoECConfig"
+#configFileName = "SDLtoECConfig"
 booleanType_EC = "bool"
 varKeyword_EC = "var"
 abstractKeyword_EC = "abs"
@@ -32,6 +36,7 @@ endOfLineOperator_EC = ";"
 eqTstOperator_EC = "="
 validGroupTypes = ["G1", "G2", "GT", "ZR"]
 validHashGroupTypes = ["G1", "G2", "ZR"]
+validRandomGroupTypes = ["G1", "G2", "ZR"]
 
 DEBUG = False
 
@@ -106,21 +111,59 @@ def getAtLeastOneHashCallOrNot(inputSDLFile):
 
     return False
 
-def addGlobalVars(outputECFile):
-    outputString = "  var " + secretKeyName_EC + " : int\n"
-    outputString += "  var " + queriedName_EC + " : message list\n"
+def getVarDeps(assignInfo, config, varName, funcName):
+    # NOTE:  this function gets variable dependencies in a very specific way.  If the variable name passed
+    # in is comprised of a list, all of the members of that list are returned.  Otherwise, the variable
+    # name passed in is returned.  Example:
+    #
+    # pk := list{g, x}
+    # would return [g, x]
+    #
+    # sk := x ^ y
+    # would return sk
+
+    if (funcName not in assignInfo):
+        sys.exit("getVarDeps in SDLtoECConvert.py:  function name passed in isn't in assignInfo.")
+
+    if (varName not in assignInfo[funcName]):
+        sys.exit("getVarDeps in SDLtoECConvert.py:  variable name passed in isn't in the entry of assignInfo for the function name passed in.")
+
+    varDeps = assignInfo[funcName][varName].getListNodesList()
+    if (len(varDeps) == 0):
+        return [varName]
+
+    return varDeps
+
+def addGlobalVars(outputECFile, assignInfo, config):
+    #outputString = "  " + varKeyword_EC + " " + secretKeyName_EC + " : int\n"
+
+    outputString = ""
+
+    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+
+    for secretKeyVar in secretKeyVars:
+        currentVarType = getVarTypeFromVarName_EC(secretKeyVar, config.keygenFuncName_SDL)
+        outputString += "  " + varKeyword_EC + " " + secretKeyVar + " : " + currentVarType + "\n"
+
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+
+    for publicKeyVar in publicKeyVars:
+        currentVarType = getVarTypeFromVarName_EC(publicKeyVar, config.keygenFuncName_SDL)
+        outputString += "  " + varKeyword_EC + " " + publicKeyVar + " : " + currentVarType + "\n"
+
+    outputString += "  " + varKeyword_EC + " " + queriedName_EC + " : message list\n"
     outputECFile.write(outputString)
 
 def addGlobalVarsForHashes(outputECFile):
-    outputString = "  var rand_oracle : (message, G_1) map\n"
+    outputString = "  var " + randomOracleVarName_EC + " : (message, G_1) map\n"
     outputECFile.write(outputString)
 
 def addHashFuncDef(outputECFile):
-    outputString = "\n  fun "+ hashFuncName_EC + "(m : message) : G_1 = {\n"
-    outputString += "    if(!in_dom(m, rand_oracle)) {\n"
-    outputString += "      rand_oracle[m] = Rand_G_1();\n"
+    outputString = "\n  " + funcName_EC + " " + hashFuncName_EC + "(m : message) : G_1 = {\n"
+    outputString += "    if(!in_dom(m, " + randomOracleVarName_EC + ")) {\n"
+    outputString += "      " + randomOracleVarName_EC + "[m] = Rand_G_1();\n"
     outputString += "    }\n"
-    outputString += "    return rand_oracle[m];\n"
+    outputString += "    return " + randomOracleVarName_EC + "[m];\n"
     outputString += "  }\n\n"
 
     outputECFile.write(outputString)
@@ -154,7 +197,7 @@ def getVarTypeFromVarName_EC(varName, funcName):
     varType_EC = convertTypeSDLtoEC(varType_SDL)
     return varType_EC
 
-def writeVarDecls(outputECFile, oldFuncName, assignInfo):
+def writeVarDecls(outputECFile, oldFuncName, assignInfo, listOfVarsToNotInclude):
     if (oldFuncName not in assignInfo):
         sys.exit("writeVarDecls in SDLtoECConvert.py:  oldFuncName not in assignInfo.")
 
@@ -162,6 +205,9 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo):
 
     for varName in assignInfo[oldFuncName]:
         if (varName == inputKeyword):
+            continue
+
+        if (varName in listOfVarsToNotInclude):
             continue
 
         #for some reason, SDLParser says variables of type "bool" are actually of type "int".
@@ -178,14 +224,14 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo):
     if (len(outputString) > 0):
         outputECFile.write(outputString)
 
-def writeBodyOfFunc(outputECFile, oldFuncName, astNodes, config):
+def writeBodyOfFunc(outputECFile, oldFuncName, astNodes, config, assignStmtsToNotInclude):
     startLineNoOfFunc = getStartLineNoOfFunc(oldFuncName)
     endLineNoOfFunc = getEndLineNoOfFunc(oldFuncName)
 
     startLineNoOfBody = startLineNoOfFunc + 2
     endLineNoOfBody = endLineNoOfFunc - 1
 
-    writeAstNodesToFile(outputECFile, astNodes, startLineNoOfBody, endLineNoOfBody, config)
+    writeAstNodesToFile(outputECFile, astNodes, startLineNoOfBody, endLineNoOfBody, config, assignStmtsToNotInclude)
 
 def isAssignStmt(astNode):
     if (astNode.type == ops.EQ):
@@ -203,7 +249,7 @@ def makeSDLtoECVarNameReplacements(attrAsString, config):
 def getAssignStmtAsString(astNode, config):
     if (astNode.type == ops.ATTR):
         attrAsString = str(astNode)
-        attrAsString = makeSDLtoECVarNameReplacements(attrAsString, config)
+        #attrAsString = makeSDLtoECVarNameReplacements(attrAsString, config)
         return attrAsString
     elif (astNode.type == ops.TYPE):
         groupTypeAsString = str(astNode)
@@ -233,6 +279,16 @@ def getAssignStmtAsString(astNode, config):
             sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received invalid type for hash call.")
         #return hashFuncName_EC + "(" + leftSide + ", " + rightSide + ")"
         return hashFuncName_EC + "(" + leftSide + ")"
+    elif (astNode.type == ops.RANDOM):
+        randomGroupType = getAssignStmtAsString(astNode.left, config)
+        if (randomGroupType not in validRandomGroupTypes):
+            sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received invalid type for random call.")
+        if ( (randomGroupType == str(types.G1)) or (randomGroupType == str(types.G2)) ):
+            return randomG1GenerationStmt_EC
+        elif (randomGroupType == str(types.ZR)):
+            return randomZRGenerationStmt_EC
+        else:
+            sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  error in system logic for random calls.")
     else:
         sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  could not handle this type (" + str(astNode.type) + ") of node (" + str(astNode) + ").  Need to add more logic to support it.")
 
@@ -290,13 +346,26 @@ def getElseStmtStart(astNode, config):
 
     return outputString
 
-def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config):
+def isAssignStmtToNotInclude(astNode, config, assignStmtsToNotInclude):
+    if (isAssignStmt(astNode) == False):
+        return False
+
+    varNameToBeAssigned = getAssignStmtAsString(astNode.left, config)
+
+    if (varNameToBeAssigned in assignStmtsToNotInclude):
+        return True
+
+    return False
+
+def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config, assignStmtsToNotInclude):
     outputString = ""
     currentNumSpaces = (numSpacesForIndent * 2)
 
     for lineNo in range(startLineNo, (endLineNo + 1)):
         currentAstNode = astNodes[(lineNo - 1)]
-        if (isAssignStmt(currentAstNode) == True):
+        if (isAssignStmtToNotInclude(currentAstNode, config, assignStmtsToNotInclude) == True):
+            continue
+        elif (isAssignStmt(currentAstNode) == True):
             outputString += writeNumOfSpacesToString(currentNumSpaces)
             outputString += getAssignStmtAsString(currentAstNode, config)
             outputString += endOfLineOperator_EC
@@ -382,17 +451,17 @@ def addBoolRetVarForVerifyFunc(outputECFile):
 
 def convertSignFunc(outputECFile, config, assignInfo, astNodes):
     writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config, assignInfo)
-    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo)
-    writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes, config)
+    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo, [])
+    writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes, config, [])
     writeMessageAdditionToQueriedList(outputECFile)
     writeReturnValue(outputECFile, config.signFuncName_SDL, assignInfo)
     writeFuncEnd(outputECFile)
 
 def convertVerifyFunc(outputECFile, config, assignInfo, astNodes):
     writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo)
-    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo)
+    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo, [])
     #addBoolRetVarForVerifyFunc(outputECFile)
-    writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config)
+    writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config, [])
     writeReturnValue(outputECFile, config.verifyFuncName_SDL, assignInfo)
     writeFuncEnd(outputECFile)
 
@@ -424,6 +493,8 @@ def convertTypeSDLtoEC(outputType_SDL):
         return "G_1"
     if (outputType_SDL == types.GT):
         return "G_T"
+    if (outputType_SDL == types.ZR):
+        return "Z_R"
     if (outputType_SDL == types.int):
         return "int"
     if (outputType_SDL == types.bool):
@@ -497,14 +568,44 @@ def addAdvAbstractDef(outputECFile, atLeastOneHashCall):
 
     outputECFile.write(outputString)
 
-def writeInitFunc(outputECFile):
+def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += funcName_EC + " Init() : " + booleanType_EC + " = {\n"
 
     outputECFile.write(outputString)
 
-def main(inputSDLFileName, outputECFileName, debugOrNot):
+    convertKeygenFunc(outputECFile, config, assignInfo, astNodes)
+
+    outputString = ""
+
+    if (atLeastOneHashCall == True):
+        outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+        outputString += randomOracleVarName_EC + " " + assignmentOperator_EC + " " + emptyMapName_EC
+        outputString += endOfLineOperator_EC + "\n"
+        outputECFile.write(outputString)
+
+def convertKeygenFunc(outputECFile, config, assignInfo, astNodes):
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+
+    listOfVarsToNotDeclare = []
+
+    for publicKeyVar in publicKeyVars:
+        if (publicKeyVar not in listOfVarsToNotDeclare):
+            listOfVarsToNotDeclare.append(publicKeyVar)
+
+    for secretKeyVar in secretKeyVars:
+        if (secretKeyVar not in listOfVarsToNotDeclare):
+            listOfVarsToNotDeclare.append(secretKeyVar)
+
+    if (outputKeyword not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(outputKeyword)
+
+    writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, listOfVarsToNotDeclare)
+    writeBodyOfFunc(outputECFile, config.keygenFuncName_SDL, astNodes, config, [outputKeyword])
+
+def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
 
     if (debugOrNot == "True"):
@@ -518,7 +619,8 @@ def main(inputSDLFileName, outputECFileName, debugOrNot):
     inputSDLFile = open(inputSDLFileName, 'r')
     outputECFile = open(outputECFileName, 'w')
 
-    config = importlib.import_module(configFileName)
+    #config = importlib.import_module(configFileName)
+    config = importlib.import_module(configName)
 
     atLeastOneHashCall = False
 
@@ -526,7 +628,7 @@ def main(inputSDLFileName, outputECFileName, debugOrNot):
 
     addTemplateLinesToOutputECFile(outputECFile)
     addGameDeclLine(inputSDLFileName, outputECFile)
-    addGlobalVars(outputECFile)
+    addGlobalVars(outputECFile, assignInfo, config)
 
     atLeastOneHashCall = getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo)
     if (atLeastOneHashCall == True):
@@ -538,18 +640,23 @@ def main(inputSDLFileName, outputECFileName, debugOrNot):
 
     convertVerifyFunc(outputECFile, config, assignInfo, astNodes)
 
-    writeInitFunc(outputECFile)
+    writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall)
+
+    #convertKeygenFunc(outputECFile, config, assignInfo, astNodes)
 
     inputSDLFile.close()
     outputECFile.close()
 
+def printErrorMessageAndExit():
+    sys.exit("Usage:  python " + sys.argv[0] + " [name of input SDL file] [SCHEMENAME.config] [name of output EasyCrypt file] [Print DEBUG info (True or False)]]")
+
 if __name__ == "__main__":
     lenSysArgv = len(sys.argv)
 
-    if ( (lenSysArgv < 4) or (lenSysArgv > 4) ):
-        sys.exit("Usage:  python " + sys.argv[0] + " [name of input SDL file] [name of output EasyCrypt file] [Print DEBUG info (True or False)]]")
+    if ( (lenSysArgv < 5) or (lenSysArgv > 5) ):
+        printErrorMessageAndExit()
 
     if ( (sys.argv[1] == "-help") or (sys.argv[1] == "--help") ):
-        sys.exit("Usage:  python " + sys.argv[0] + " [name of input SDL file] [name of output EasyCrypt file] [Print DEBUG info (True or False)]")
+        printErrorMessageAndExit()
 
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
