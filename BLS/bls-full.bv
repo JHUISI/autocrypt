@@ -28,13 +28,15 @@ END :: func:sign
 BEGIN :: func:verify
  input := list{pk, M, sig, g}
  h := H(M, G1)
- BEGIN :: if
- if {e(h, pk) == e(sig, g)}
- output := True
- else
- output := False
- END :: if
- test := (e(h, pk) == e(sig, g))
+# BEGIN :: if
+# if {e(h, pk) == e(sig, g)}
+#  output := True
+# else
+#  output := False
+# END :: if
+#test := (e(h, pk) == e(sig, g))
+# output := v
+ output := (e(h, pk) == e(sig, g))
 END :: func:verify
 
 constant := g
