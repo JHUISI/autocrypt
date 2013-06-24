@@ -1,0 +1,20 @@
+"Implementing TLS with Verified Cryptographic Security" by
+Karthikeyan Bhargavan, Cedric Fournet, Markulf Kohlweiss, Alfredo Pironti, and Pierre-Yves Strub
+
+@InProceedings{BhargavanFKPS13,
+  title = {Implementing TLS with Verified Cryptographic Security},
+  booktitle = {IEEE Symposium on Security \& Privacy (Oakland)},
+  year = 2013,
+  author = {Karthikeyan Bhargavan and C{\'e}dric Fournet and Markulf Kohlweiss and Alfredo Pironti and Pierre-Yves Strub}
+}
+
+high-level summary
+==================
+- developed verified implmentation of TLS (v1.2) using F# and specified in F7. This implementation faithfully implements the RFC and includes ciphersuites, sessions and connections, alerts, errors, etc.
+- verification is done via F7 and approach is to equip each crypto primitive with typed interfaces that capture security properties.
+- the idea is to gradually swap concrete implementation with ideal functionalities in each module that makes up TLS implementation
+- typecheck occurs on the protocol state machine and they are able to obtain precise security theorems (safety and secrecy) for TLS
+- they find and prevent a new attack on TLS based on alert fragmentation and existing attacks such as padding oracle, re-negotiating peer identities.
+- code/performance: 5 KLOC for mTLS, and typechecking mTLS takes 15 minutes on modern desktop -- but this is something you do once when producing TLS implementation binary.
+
+[ More to come ]
