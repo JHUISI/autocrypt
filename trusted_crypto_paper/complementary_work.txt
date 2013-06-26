@@ -18,3 +18,45 @@ high-level summary
 - code/performance: 5 KLOC for mTLS, and typechecking mTLS takes 15 minutes on modern desktop -- but this is something you do once when producing TLS implementation binary.
 
 [ More to come ]
+
+
+
+
+"ZooCrypt: Fully Automated Analysis of Padding-Based Encryption in the Computational Model" by
+Gilles Barthe, Juan Manuel Crespo, Cesar Kunz, Benedikt Schmidt, Benjamin Gregoire, Yassine Laknech, Santiago Zanella-Beguelin
+
+@article{zoocrypt13,
+   title = {Fully Automated Analysis of Padding-Based Encryption in the Computational Model},
+   booktitle = {Tech Report},
+   year = 2013,
+   author = {Gilles Barthe and Juan Manuel Crespo and Cesar Kunz and Benedikt Schmidt and Benjamin Gregoire and Yassine Laknech and Santiago Zanella-Beguelin}
+}
+
+intro
+=====
+- two models exist for analyzing security of crypto: computational and symbolic model. 
+1. compuational model views primitives as functions on bitstrings while adversaries are modeled as ppt alg and security is based on success probability and resources of the adversary.
+2. symbolic model views primitives as function symbols in algebraic expressions. equational theories used to model properties and capabilities of an adversary. this approach is amenable to automation but misses possible attacks in computational model (e.g., probability of breaking hardness assumptions?)
+3. Abadi and Rogaway show it is possible to achieve cryptographic soundess by providing sufficient conditions where symbolic security imply computational security. 
+4. crypto. soundness and extensions enable full automated proofs of computational security for cryptographic protocols.
+5. alternative approach: PL for reasoning about security in computational model (e.g., cryptoVerif and EasyCrypt) -- reductions with concrete security bounds (require expert knowledge) -- combining this approach with symbolic methods is an open problem.
+6. Smbolic methods are useful for finding attacks and estimating success probability in crypto. primitives -- this is useful for automated security analysis 
+
+
+contribution
+============
+- analyze security of padding-based enc schemes built from hash functions and trapdoor permutations -- e.g., RSA
+1. introduce logics for CPA and CCA security using symbolic methods. Their approach combines computational and symbolic methods -- logics use symbolic deducability relations to compute security bounds and for checking reduction to computational assumptions.
+2. find attacks using fully automated symbolic methods. use static equivalence and algebraic properties of trapdoor perm. to find attacks consistent with computational assumptions
+
+Result of approaches (Zoocrypt) is demonstrated in the following formulation strictly for padding schemes 
+with 2 modes of operation: batch and interactive mode
+
+- batch: builds database of padding-scheme variations. For each scheme and set of assumptions on trapdoors, an adversary that breaks the security or a formal proof of its security.
+- interactive: assist users in building proofs of security or finding an attack on a selected scheme. When building proofs, ZooCrypt provides user with applicable rules at each stage of derivation suggesting alternative derivations with better bounds.
+
+
+I think this paper is complementary b/c it assists users in producing proofs of security in the first place. Our system could take ZooCrypt output in addition to corresponding SDL and we can retrace it to one of our trusted assumptions. If everything checks out, the concrete implementation is derived and used as a building block in a given system.  
+
+[ More to come w.r.t technical details of ZooCrypt  -- in particular, CPA and CCA specialized logics, and proof search approach, and how they find attacks, etc. ]
+
