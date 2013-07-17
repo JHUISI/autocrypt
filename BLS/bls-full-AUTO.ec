@@ -130,3 +130,12 @@ game blsfull_EF = {
     pk = (g ^ x);
     sk = x;
     rand_oracle = empty_map;
+    queried = [];
+    return true;
+  }
+
+  fun Main() : bool = {
+    var m : message;
+    var sig : G_1;
+    var g : G_1;
+    var s : G_1;

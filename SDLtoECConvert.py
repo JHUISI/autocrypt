@@ -2,11 +2,15 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+sVarInMain_EC = "s"
+messageVarNameInMain_EC = "m"
+emptyMapSymbol_EC = "[]"
 emptyMapName_EC = "empty_map"
 randomOracleVarName_EC = "rand_oracle"
 randomG1GenerationStmt_EC = "Rand_G_1()"
 randomZRGenerationStmt_EC = "Rand_Z_R()"
 funcName_EC = "fun"
+trueKeyword_EC = "true"
 trueKeyword_SDL = "True"
 falseKeyword_SDL = "False"
 numSpacesForIndent = 2
@@ -568,6 +572,78 @@ def addAdvAbstractDef(outputECFile, atLeastOneHashCall):
 
     outputECFile.write(outputString)
 
+def writeVerifyArgsDeclForMain(outputECFile, config, assignInfo):
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+
+    listOfVarsToNotDeclare = []
+
+    for publicKeyVar in publicKeyVars:
+        if (publicKeyVar not in listOfVarsToNotDeclare):
+            listOfVarsToNotDeclare.append(publicKeyVar)
+
+    for secretKeyVar in secretKeyVars:
+        if (secretKeyVar not in listOfVarsToNotDeclare):
+            listOfVarsToNotDeclare.append(secretKeyVar)
+
+    if (outputKeyword not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(outputKeyword)
+
+    if (config.verifyFuncName_SDL not in assignInfo):
+        sys.exit("writeVerifyArgsDeclForMain in SDLtoECConvert.py:  verify function name from SDL is not in assignInfo.")
+
+    if (inputKeyword not in assignInfo[config.verifyFuncName_SDL]):
+        sys.exit("writeVerifyArgsDeclForMain in SDLtoECConvert.py:  input keyword is not in assignInfo[verify func name from SDL].")
+
+    inputVarInfoObj = assignInfo[config.verifyFuncName_SDL][inputKeyword]
+    
+    if (inputVarInfoObj == None):
+        sys.exit("writeVerifyArgsDeclForMain in SDLtoECConvert.py:  input variable information object extracted from assignInfo[verify function name from SDL] is None.")
+
+    inputVarNamesList = []
+
+    if ( (inputVarInfoObj.getIsList() == True) and (len(inputVarInfoObj.getListNodesList()) > 0) ):
+        for inputVarName in inputVarInfoObj.getListNodesList():
+            if (inputVarName in inputVarNamesList):
+                sys.exit("writeVerifyArgsDeclForMain in SDLtoECConvert.py:  duplicate variable names found in input variable names.")
+
+            inputVarNamesList.append(inputVarName)
+
+    outputString = ""
+
+    for inputVarName in inputVarNamesList:
+        if (inputVarName in listOfVarsToNotDeclare):
+            continue
+
+        outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+        outputString += varKeyword_EC + " "
+        outputString += getECVarNameAndTypeFromSDLName(inputVarName, config, assignInfo, config.verifyFuncName_SDL)
+        outputString += endOfLineOperator_EC + "\n"
+
+    outputECFile.write(outputString)
+
+def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent)
+    outputString += funcName_EC + " Main() : " + booleanType_EC + " " + assignmentOperator_EC + " "
+    outputString += funcStartChar_EC + "\n"
+
+    outputECFile.write(outputString)
+
+    '''
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += varKeyword_EC + " " + messageVarNameInMain_EC + " : " + messageType_EC
+    outputString += endOfLineOperator_EC + "\n"
+    '''
+
+    writeVerifyArgsDeclForMain(outputECFile, config, assignInfo)
+
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += varKeyword_EC + " " + sVarInMain_EC + " : G_1" + endOfLineOperator_EC + "\n"
+
+    outputECFile.write(outputString)
+
 def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent)
@@ -583,7 +659,17 @@ def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
         outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
         outputString += randomOracleVarName_EC + " " + assignmentOperator_EC + " " + emptyMapName_EC
         outputString += endOfLineOperator_EC + "\n"
+        outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+        outputString += queriedName_EC + " " + assignmentOperator_EC + " " + emptyMapSymbol_EC
+        outputString += endOfLineOperator_EC + "\n"
         outputECFile.write(outputString)
+
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += returnKeyword_EC + " " + trueKeyword_EC + endOfLineOperator_EC + "\n"
+    outputString += writeNumOfSpacesToString(numSpacesForIndent)
+    outputString += funcEndChar_EC + "\n\n"
+    outputECFile.write(outputString)
 
 def convertKeygenFunc(outputECFile, config, assignInfo, astNodes):
     publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
@@ -641,6 +727,8 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     convertVerifyFunc(outputECFile, config, assignInfo, astNodes)
 
     writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall)
+
+    writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall)
 
     #convertKeygenFunc(outputECFile, config, assignInfo, astNodes)
 
