@@ -138,4 +138,3 @@ game blsfull_EF = {
     var m : message;
     var sig : G_1;
     var g : G_1;
-    var s : G_1;
