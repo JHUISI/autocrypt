@@ -8,6 +8,7 @@ cnst g_1_i : G_1.
 cnst g_T_i : G_T.
 cnst g : G_1.
 cnst q : int.
+cnst limit_Hash : int.
 
 op [*] : (G_1, G_1) -> G_1 as G_1_mul.
 op [^] : (G_1, int) -> G_1 as G_1_pow.
@@ -82,10 +83,11 @@ axiom mod_bound :
  forall (x:int), 0 <= x%%q && x%%q < q. 
 
 
-pop KG   : () -> (int).
+pop Rand_G_1_exp   : () -> (int).
 pop Rand_G_1 : () -> (G_1).
 
-axiom Rand_G_1_def() : x = Rand_G_1() ~ y = [0..q] : true ==> x = g_1_i ^ y.
+axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y.
+axiom Rand_G_1_def() : x = Rand_G_1() ~ y = [0..q-1] : true ==> x = g_1_i ^ y.
 
 adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; message -> G_1}.
 
@@ -96,7 +98,6 @@ game BLS_EF = {
   var count_Hash : int
   var count_Sign : int
   var count_Verify : int
-  var count_Init : int
 
   fun Hash(m : message) : G_1 = {
     count_Hash = count_Hash + 1;
@@ -128,8 +129,10 @@ game BLS_EF = {
   }
 
   fun Init() : bool = {
-    count_Init = count_Init + 1;
-    secret_key = KG();
+    count_Hash = 0;
+    count_Sign = 0;
+    count_Verify = 0;
+    secret_key = Rand_G_1_exp();
     rand_oracle = empty_map;
     queried = [];
     return true;
@@ -161,7 +164,10 @@ var sigs : (message, G_1) map
 var given_1 : G_1
 
   where Init = {
-    secret_key = KG();
+    count_Hash = 0;
+    count_Sign = 0;
+    count_Verify = 0;
+    secret_key = Rand_G_1_exp();
     rand_oracle = empty_map;
     queried = [];
     hashes = empty_map;
@@ -175,7 +181,7 @@ var given_1 : G_1
 
     count_Hash = count_Hash + 1;
     if(!in_dom(m, hashes)) {
-      exp=[0..q];
+      exp=Rand_G_1_exp();
 
       hashes[m]=g_1_i^exp;      
       sigs[m]=hashes[m]^secret_key;
@@ -213,12 +219,13 @@ var given_1 : G_1
 
 (* prove that the output of the hash functions is still the same *)
 equiv Mod_Hash : BLS_EF.Hash ~ G_Inv_Sign.Hash :    
-  ={m,secret_key,queried} && rand_oracle{1}=hashes{2} &&
+  ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
-  ={res,secret_key,queried} && rand_oracle{1}=hashes{2} &&
+  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) =>
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
+sp.
 if.
 derandomize.
 wp.
@@ -229,20 +236,21 @@ save.
 
 (* Next we need to prove that the output of the Sign function is still the same *)
 equiv Mod_Sign : BLS_EF.Sign ~ G_Inv_Sign.Sign :
-  ={m,secret_key,queried} && rand_oracle{1}=hashes{2} &&
+  ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) =>
     sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
-  ={res,secret_key,queried} && rand_oracle{1}=hashes{2} &&
+  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) =>
     sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
 
 wp.
+swap{1} 2.
 app 1 1 
   (in_dom(m{1}, rand_oracle{1}) &&
     in_dom(m{2}, hashes{2}) &&
     h{1}=rand_oracle{1}[m{1}] &&
     h{2}=hashes{2}[m{2}]) &&
-    ={m,secret_key,queried} &&
+    ={m,secret_key,queried,count_Hash} &&
     rand_oracle{1} = hashes{2} &&
     (forall (m_0 : message),
       in_dom (m_0,hashes{2}) =>
@@ -261,27 +269,38 @@ simpl.
 trivial.
 save.
 
-equiv Mod_Verify : BLS_EF.Verify ~ G_Inv_Sign.Verify : ={m, s, pk, secret_key, queried} && rand_oracle{1}=hashes{2} &&
+equiv Mod_Verify : BLS_EF.Verify ~ G_Inv_Sign.Verify : ={m, s, pk, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) => 
-      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==> ={res,queried}.
+      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==> ={res,queried, count_Hash}.
 wp.
 call using Mod_Hash.
+wp.
 trivial.
 save.
 
 equiv Mod_A : BLS_EF.A ~ G_Inv_Sign.A : 
-={adv_public_key, secret_key, queried} && rand_oracle{1}=hashes{2} &&
+={adv_public_key, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
 (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})
   ==>
-  ={res, secret_key, queried} && rand_oracle{1}=hashes{2} &&
+  ={res, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) => 
-      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) by auto(={secret_key, queried} && rand_oracle{1}=hashes{2} &&
+      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) by auto(={secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})).
     
 
-equiv e_G_Inv_Sign : BLS_EF.Main ~ G_Inv_Sign.Main : true ==> ={res}.
+equiv e_G_Inv_Sign_unlimited : BLS_EF.Main ~ G_Inv_Sign.Main : true ==> ={res}.
+call using Mod_Verify.
+call using Mod_A.
+wp.
+inline.
+wp.
+rnd.
+trivial.
+save.
+
+equiv e_G_Inv_Sign : BLS_EF.Main ~ G_Inv_Sign.Main : true ==> ={res} && (count_Hash{1} <= limit_Hash)=(count_Hash{2} <= limit_Hash).
 call using Mod_Verify.
 call using Mod_A.
 wp.
@@ -296,32 +315,9 @@ save.
    now we need to hijack one hash at random 
 *)
 
-
-  and Hash = {
-    var exp : int;
-
-    if(!in_dom(m, hashes)) {
-      exp=[0..q];
-
-      hashes[m]=g_1_i^exp;      
-      sigs[m]=hashes[m]^secret_key;
-    }
-    return hashes[m];
-  }
-
-  and Sign = {
-    var h : G_1;
-    var s : G_1;
-    h = Hash(m);
-    s = sigs[m];
-    queried = m :: queried;
-    return s;
-  }
-.
-
-
+(* previous defs 
   where Init = {
-    secret_key = KG();
+    secret_key = Rand_G_1_exp();
     rand_oracle = empty_map;
     queried = [];
     hashes = empty_map;
@@ -368,60 +364,141 @@ save.
     v = Verify(m, s, pk);
     return v && !mem(m, queried);
   }
+*)
 
+game G_Choose_One = G_Inv_Sign
 
-
-game G_ChooseOne = G_Inv_Sign
-var n_inject : int;
-var m_inject : message;
-var n_count : int;
-var given_2 : G_1;
+  var n_inject : int
+  var m_inject : message
+  var given_2 : G_1
 
   where Init = {
     var b : int;
 
-    secret_key = KG();
+    count_Hash = 0;
+    given_1 = Rand_G_1_exp();
     rand_oracle = empty_map;
     queried = [];
     hashes = empty_map;
     sigs = empty_map;
-    n_inject = [0..queries];
-    n_count = 0;
-    b = [0..q-1];
+    n_inject = [1..limit_Hash];
+    b = Rand_G_1_exp();
     given_2 = g^b;
     return true;
   }
 
   and Hash = {
     var exp : int;
+    count_Hash = count_Hash + 1;
 
     if(!in_dom(m, hashes)) {
-      if(n_count = n_inject) {
-        m_inject = m
+      if(count_Hash = n_inject) {
+        m_inject = m;
         (* hashes[m] = given_2 *)
       } (* else { *)
         exp=[0..q];
         hashes[m]=g_1_i^exp;      
         sigs[m]=given_1^exp;
       (* } *)
-      n_hash = n_hash + 1;
     }
     return hashes[m];
   }
 .
 
-(* next, prove this is equivalent to the other game when ...the bad
-   thing doesn't happen *)
-
-
-
-
+(* prove that the output of the hash functions is still the same *)
+equiv Mod_Hash2 : G_Inv_Sign.Hash ~ G_Choose_One.Hash:    
+  ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle}
+  ==>
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle}.
+derandomize.
+app 2 2 ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle}.
+wp.
+rnd.
+trivial.
+if.
 
 (* here *)
 
 
 
 
+derandomize.
+wp.
+rnd.
+simpl.
+trivial.
+save.
+
+(* Next we need to prove that the output of the Sign function is still the same *)
+equiv Mod_Sign : BLS_EF.Sign ~ G_Inv_Sign.Sign :
+  ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
+  (forall (m_0:message), in_dom(m_0,hashes{2}) =>
+    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
+  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
+  (forall (m_0:message), in_dom(m_0,hashes{2}) =>
+    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
+
+wp.
+swap{1} 2.
+app 1 1 
+  (in_dom(m{1}, rand_oracle{1}) &&
+    in_dom(m{2}, hashes{2}) &&
+    h{1}=rand_oracle{1}[m{1}] &&
+    h{2}=hashes{2}[m{2}]) &&
+    ={m,secret_key,queried,count_Hash} &&
+    rand_oracle{1} = hashes{2} &&
+    (forall (m_0 : message),
+      in_dom (m_0,hashes{2}) =>
+      sigs{2}[m_0] = hashes{2}[m_0] ^ secret_key{2}).
+inline.
+sp.
+if.
+derandomize.
+wp.
+apply : Rand_G_1_def().
+simpl.
+
+wp.
+simpl.
+
+trivial.
+save.
+
+equiv Mod_Verify : BLS_EF.Verify ~ G_Inv_Sign.Verify : ={m, s, pk, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
+    (forall (m_0:message), in_dom(m_0,hashes{2}) => 
+      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==> ={res,queried, count_Hash}.
+wp.
+call using Mod_Hash.
+wp.
+trivial.
+save.
+
+equiv Mod_A : BLS_EF.A ~ G_Inv_Sign.A : 
+={adv_public_key, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
+(forall (m_0:message), in_dom(m_0,hashes{2}) => 
+      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})
+  ==>
+  ={res, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
+  (forall (m_0:message), in_dom(m_0,hashes{2}) => 
+      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) by auto(={secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
+  (forall (m_0:message), in_dom(m_0,hashes{2}) => 
+      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})).
+    
+
+
+equiv e_G_Choose_One : G_Inv_Sign.Main ~ G_Choose_One.Main : true ==> ={res} && (count_Hash{1} <= limit_Hash)=(count_Hash{2} <= limit_Hash).
+call using Mod_Verify.
+call using Mod_A.
+wp.
+inline.
+wp.
+rnd.
+trivial.
+save.
+
+
+(* prove this is equivalent to the other game when ...the bad
+   thing doesn't happen *)
 
 
 call using Mod_Hash.
@@ -491,7 +568,7 @@ where Hash = {
 }
 
 and Init = {
-  secret_key = KG();
+  secret_key = Rand_G_1_exp();
   rand_oracle = empty_map;
   mess_num = empty_map;
   queried = [];
