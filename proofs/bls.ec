@@ -8,7 +8,6 @@ cnst g_1_i : G_1.
 cnst g_T_i : G_T.
 cnst g : G_1.
 cnst q : int.
-cnst queries : int.
 
 op [*] : (G_1, G_1) -> G_1 as G_1_mul.
 op [^] : (G_1, int) -> G_1 as G_1_pow.
@@ -94,8 +93,13 @@ game BLS_EF = {
   var secret_key : int
   var rand_oracle : (message, G_1) map
   var queried : message list
+  var count_Hash : int
+  var count_Sign : int
+  var count_Verify : int
+  var count_Init : int
 
   fun Hash(m : message) : G_1 = {
+    count_Hash = count_Hash + 1;
     if(!in_dom(m, rand_oracle)) {
       rand_oracle[m] = Rand_G_1();
     }
@@ -105,6 +109,7 @@ game BLS_EF = {
   fun Sign(m : message) : G_1 = {
     var h : G_1;
     var s : G_1;
+    count_Sign = count_Sign + 1;
     h = Hash(m);
     s = h^secret_key;
     queried = m :: queried;
@@ -116,12 +121,14 @@ game BLS_EF = {
   fun Verify(m : message, s : G_1, pk : G_1) : bool = {
     var v : bool;
     var h : G_1;
+    count_Verify = count_Verify + 1;
     h = Hash(m);
     v = (e(h, pk) = e(s, g));
     return v;
   }
 
   fun Init() : bool = {
+    count_Init = count_Init + 1;
     secret_key = KG();
     rand_oracle = empty_map;
     queried = [];
@@ -160,12 +167,13 @@ var given_1 : G_1
     hashes = empty_map;
     sigs = empty_map;
  
-   return true;
+    return true;
   }
 
   and Hash = {
     var exp : int;
 
+    count_Hash = count_Hash + 1;
     if(!in_dom(m, hashes)) {
       exp=[0..q];
 
@@ -365,7 +373,8 @@ save.
 
 game G_ChooseOne = G_Inv_Sign
 var n_inject : int;
-var n_hash : int;
+var m_inject : message;
+var n_count : int;
 var given_2 : G_1;
 
   where Init = {
@@ -377,7 +386,7 @@ var given_2 : G_1;
     hashes = empty_map;
     sigs = empty_map;
     n_inject = [0..queries];
-    n_hash = 0;
+    n_count = 0;
     b = [0..q-1];
     given_2 = g^b;
     return true;
@@ -387,13 +396,14 @@ var given_2 : G_1;
     var exp : int;
 
     if(!in_dom(m, hashes)) {
-      if(n_hash = n_inject) {
-        hashes[m] = given_2
-      } else {
+      if(n_count = n_inject) {
+        m_inject = m
+        (* hashes[m] = given_2 *)
+      } (* else { *)
         exp=[0..q];
         hashes[m]=g_1_i^exp;      
         sigs[m]=given_1^exp;
-      }
+      (* } *)
       n_hash = n_hash + 1;
     }
     return hashes[m];
