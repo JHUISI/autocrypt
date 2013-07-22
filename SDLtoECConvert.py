@@ -638,11 +638,13 @@ def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
 
     writeVerifyArgsDeclForMain(outputECFile, config, assignInfo)
 
+    '''
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += varKeyword_EC + " " + sVarInMain_EC + " : G_1" + endOfLineOperator_EC + "\n"
+    '''
 
-    outputECFile.write(outputString)
+    #outputECFile.write(outputString)
 
 def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall):
     outputString = ""
@@ -691,6 +693,23 @@ def convertKeygenFunc(outputECFile, config, assignInfo, astNodes):
     writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, listOfVarsToNotDeclare)
     writeBodyOfFunc(outputECFile, config.keygenFuncName_SDL, astNodes, config, [outputKeyword])
 
+def getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config):
+    if (config.signFuncName_SDL not in assignInfo):
+        sys.exit("getGroupTypeOfSignatureVariable in SDLtoECConvert.py:  the function name of the sign function from the config file is not in assignInfo.")
+
+    if (outputKeyword not in assignInfo[config.signFuncName_SDL]):
+        sys.exit("getGroupTypeOfSignatureVariable in SDLtoECConvert.py:  output keyword is not in assignInfo[config.signFuncName_SDL].")
+
+    varDepsOfOutputKeyword = assignInfo[config.signFuncName_SDL][outputKeyword].getVarDeps()
+    if (len(varDepsOfOutputKeyword) != 1):
+        sys.exit("getGroupTypeOfSignatureVariable in SDLtoECConvert.py:  length of variable dependencies list of output variable is unequal to 1 (currently unsupported).")
+
+    outputVariable = varDepsOfOutputKeyword[0]
+    if (outputVariable not in assignInfo[config.signFuncName_SDL]):
+        sys.exit("getGroupTypeOfSignatureVariable in SDLtoECConvert.py:  output variable found is not assigned anywhere in the sign function.")
+
+    return getVarTypeFromVarName_EC(outputVariable, config.signFuncName_SDL)
+
 def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
 
@@ -713,6 +732,13 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     (assignInfo, astNodes) = getInputSDLFileMetadata(inputSDLFileName)
 
     addTemplateLinesToOutputECFile(outputECFile)
+
+    groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
+
+    print(groupTypeOfSignatureVariable)
+
+    #outputECFile.write("IT GOES HERE")
+
     addGameDeclLine(inputSDLFileName, outputECFile)
     addGlobalVars(outputECFile, assignInfo, config)
 

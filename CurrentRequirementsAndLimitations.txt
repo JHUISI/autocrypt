@@ -1,0 +1,5 @@
+-- We can only handle signature schemes in which the signature itself is one element.
+
+-- The output variable of the sign function should be one variable name, nothing else (i.e., it cannot be
+an expression).  This is b/c we have to automatically infer the type of the output of the sign function,
+so we need some variable to analyze.
