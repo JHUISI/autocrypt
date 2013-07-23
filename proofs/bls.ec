@@ -69,7 +69,6 @@ axiom G_1_pow_mod :
 axiom G_T_pow_mod : 
  forall (z:int), g_T_i ^ (z%%q) = g_T_i ^ z.
 
-
 axiom mod_add : 
  forall (x,y:int), (x%%q + y)%%q = (x + y)%%q.
 
@@ -86,8 +85,8 @@ axiom mod_bound :
 pop Rand_G_1_exp   : () -> (int).
 pop Rand_G_1 : () -> (G_1).
 
-axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y.
-axiom Rand_G_1_def() : x = Rand_G_1() ~ y = [0..q-1] : true ==> x = g_1_i ^ y.
+(* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)
+axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_1_i ^ y.
 
 adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; message -> G_1}.
 
@@ -376,7 +375,7 @@ game G_Choose_One = G_Inv_Sign
     var b : int;
 
     count_Hash = 0;
-    given_1 = Rand_G_1_exp();
+    given_1 = Rand_G_1();
     rand_oracle = empty_map;
     queried = [];
     hashes = empty_map;
@@ -396,7 +395,7 @@ game G_Choose_One = G_Inv_Sign
         m_inject = m;
         (* hashes[m] = given_2 *)
       } (* else { *)
-        exp=[0..q];
+        exp=Rand_G_1_exp();
         hashes[m]=g_1_i^exp;      
         sigs[m]=given_1^exp;
       (* } *)
@@ -416,6 +415,8 @@ wp.
 rnd.
 trivial.
 if.
+
+
 
 (* here *)
 
@@ -702,7 +703,7 @@ where Hash = {
     if(i=j) {
       hashes[m]=given_2
     } else {
-      exp=[0..q];
+      exp=Rand_G_1_exp();
       sigs[m]=given_1^exp;
       hashes[m]=g_1_i^exp;
     }
