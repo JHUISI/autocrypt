@@ -735,7 +735,7 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
 
     groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
 
-    print(groupTypeOfSignatureVariable)
+    #print(groupTypeOfSignatureVariable)
 
     #outputECFile.write("IT GOES HERE")
 
