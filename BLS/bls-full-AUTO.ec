@@ -88,7 +88,7 @@ pop Rand_G_1 : () -> (G_1).
 
 axiom Rand_G_1_def() : x = Rand_G_1() ~ y = [0..q] : true ==> x = g_1_i ^ y.
 
-adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; message -> G_1}.
+adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1
 
 game blsfull_EF = {
   var sk : Z_R
@@ -104,9 +104,11 @@ game blsfull_EF = {
   }
 
   fun Sign(m : message) : G_1 = {
+    var sig2 : G_1;
     var sig : G_1;
     var output : G_1;
     sig = (Hash(M) ^ sk);
+    sig2 = Hash(M);
     output = sig;
     queried = m :: queried;
     return output;
