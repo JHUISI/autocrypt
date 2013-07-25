@@ -19,9 +19,17 @@ input := None
 output := list{pk, sk, g}
 END :: func:keygen
 
+BEGIN :: func:testFunction
+input := list{sk, M}
+hh := H(M, G2)
+testVariable := (hh^sk)
+output := testVariable
+END :: func:sign
+
 BEGIN :: func:sign
 input := list{sk, M}
 sig := (H(M, G1)^sk)
+sig2 := (H(M, G1))
 output := sig
 END :: func:sign
 

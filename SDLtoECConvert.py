@@ -2,6 +2,10 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+advPubKeyVarName_EC = "adv_public_key"
+adversaryVarName_EC = "Adv"
+adversaryKeyword_EC = "adversary"
+funcNamesAdvDoesntNeed = ["types", "count", "precompute", "NONE_FUNC_NAME"]
 sVarInMain_EC = "s"
 messageVarNameInMain_EC = "m"
 emptyMapSymbol_EC = "[]"
@@ -490,6 +494,22 @@ def getTypeOfOutputVar(funcName, assignInfo):
  
     return getVarTypeFromVarName_EC(outputKeyword, funcName)
 
+def convertTypeSDLtoEC_Strings(outputType_SDL):
+    if (outputType_SDL == "G1"):
+        return "G_1"
+    if (outputType_SDL == "G2"):
+        return "G_1"
+    if (outputType_SDL == "GT"):
+        return "G_T"
+    if (outputType_SDL == "ZR"):
+        return "Z_R"
+    if (outputType_SDL == "int"):
+        return "int"
+    if (outputType_SDL == "bool"):
+        return booleanType_EC
+
+    sys.exit("convertTypeSDLtoEC_Strings in SDLtoECConvert.py:  outputType_SDL " + str(outputType_SDL) + " is not of a type we support; need to add more logic to support it.")
+
 def convertTypeSDLtoEC(outputType_SDL):
     if (outputType_SDL == types.G1):
         return "G_1"
@@ -710,6 +730,75 @@ def getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config):
 
     return getVarTypeFromVarName_EC(outputVariable, config.signFuncName_SDL)
 
+def getExtraFuncsForAdversary(assignInfo, config):
+    retList = []
+
+    for keyName in assignInfo:
+        if ( (keyName not in funcNamesAdvDoesntNeed) and (keyName != config.keygenFuncName_SDL) and (keyName != config.signFuncName_SDL) and (keyName != config.verifyFuncName_SDL) ):
+            if (keyName not in retList):
+                retList.append(keyName)
+
+    return retList
+
+def getHashGroupTypeOfNodeRecursive(inputNode, hashesGroupTypesInFunc):
+    if (inputNode.type == ops.HASH):
+        groupTypeToAdd = str(inputNode.right)
+        if (len(hashesGroupTypesInFunc) == 0):
+            hashesGroupTypesInFunc.append(groupTypeToAdd)
+        else:
+            if (groupTypeToAdd not in hashesGroupTypesInFunc):
+                sys.exit("getHashGroupTypeOfNodeRecursive in SDLtoECConvert.py:  found mismatching hash types in same function.")
+
+    if (inputNode.left != None):
+        getHashGroupTypeOfNodeRecursive(inputNode.left, hashesGroupTypesInFunc)
+
+    if (inputNode.right != None):
+        getHashGroupTypeOfNodeRecursive(inputNode.right, hashesGroupTypesInFunc)
+
+def getHashGroupTypeOfNode(inputNode, hashesGroupTypesInFunc):
+    getHashGroupTypeOfNodeRecursive(inputNode, hashesGroupTypesInFunc)
+
+def getHashGroupTypeOfFunc(funcName, assignInfo, config):
+    if (funcName not in assignInfo):
+        sys.exit("getHashGroupTypeOfFunc in SDLtoECConvert.py:  function name parameter passed in isn't in assignInfo parameter passed in.")
+
+    hashesGroupTypesInFunc = []
+
+    for varName in assignInfo[funcName]:
+        varInfoObj = assignInfo[funcName][varName]
+        assignNodeRight = varInfoObj.getAssignNode().right
+        hashGroupTypeOfNode = getHashGroupTypeOfNode(assignNodeRight, hashesGroupTypesInFunc)
+
+    if (len(hashesGroupTypesInFunc) > 1):
+        sys.exit("getHashGroupTypeOfFunc in SDLtoECConvert.py:  length of hashesGroupTypesInFunc data structure returned is greater than one.")
+
+    if (len(hashesGroupTypesInFunc) == 0):
+        return None
+
+    return hashesGroupTypesInFunc[0]
+
+def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
+    groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
+
+    extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
+
+    outputString = ""
+    outputString += adversaryKeyword_EC + " " + adversaryVarName_EC + " (" + advPubKeyVarName_EC + " : "
+
+    pubKeyType = getVarTypeFromVarName_EC(config.publicKeyName_SDL, config.keygenFuncName_SDL)
+
+    outputString += pubKeyType + ") : (" + messageType_EC + " * " + groupTypeOfSignatureVariable + ") {"
+    outputString += messageType_EC + " -> "
+
+    hashGroupTypeOfSigFunc_SDL = getHashGroupTypeOfFunc(config.signFuncName_SDL, assignInfo, config)
+    hashGroupTypeOfSigFunc_EC = convertTypeSDLtoEC_Strings(hashGroupTypeOfSigFunc_SDL)
+
+    outputString += hashGroupTypeOfSigFunc_EC
+
+    outputString += "\n\n"
+
+    outputECFile.write(outputString)
+
 def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
 
@@ -724,7 +813,6 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     inputSDLFile = open(inputSDLFileName, 'r')
     outputECFile = open(outputECFileName, 'w')
 
-    #config = importlib.import_module(configFileName)
     config = importlib.import_module(configName)
 
     atLeastOneHashCall = False
@@ -733,11 +821,7 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
 
     addTemplateLinesToOutputECFile(outputECFile)
 
-    groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
-
-    #print(groupTypeOfSignatureVariable)
-
-    #outputECFile.write("IT GOES HERE")
+    addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config)
 
     addGameDeclLine(inputSDLFileName, outputECFile)
     addGlobalVars(outputECFile, assignInfo, config)

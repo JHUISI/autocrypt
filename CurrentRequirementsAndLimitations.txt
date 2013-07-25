@@ -1,5 +1,10 @@
--- We can only handle signature schemes in which the signature itself is one element.
+-- We can only handle signature schemes in which both the public key and the signature are one element.
+
+-- The public key must be assigned a group element somewhere in the KeyGen function.
 
 -- The output variable of the sign function should be one variable name, nothing else (i.e., it cannot be
 an expression).  This is b/c we have to automatically infer the type of the output of the sign function,
 so we need some variable to analyze.
+
+-- All hashes performed in the signature function must hash to the same group (i.e., you cannot have one
+variable hashing to G1 and another hashing to G2).
