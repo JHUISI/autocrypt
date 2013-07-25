@@ -6,7 +6,8 @@ type message.
 
 cnst g_1_i : G_1.
 cnst g_T_i : G_T.
-cnst g : G_1.
+cnst g_1 : G_1.
+cnst g_T : G_T.
 cnst q : int.
 cnst limit_Hash : int.
 
@@ -43,31 +44,31 @@ axiom G_T_exp_0 : forall (x : G_T), x ^ 0 = g_T_i.
 axiom G_T_exp_S : forall (x : G_T, k : int), k > 0 => x ^ k = x * (x^(k-1)).
 
 axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).
-(* axiom non_degenerate : !(e(g_1_i, g_1_i) = g_T_i). *)
+(* axiom non_degenerate : !(e(g_1, g_1) = g_T_i). *)
 
 axiom G_1_pow_add : 
- forall (x, y:int), g_1_i ^ (x + y) = g_1_i ^ x * g_1_i ^ y.
+ forall (x, y:int), g_1 ^ (x + y) = g_1 ^ x * g_1 ^ y.
 
 axiom G_T_pow_add : 
- forall (x, y:int), g_T_i ^ (x + y) = g_T_i ^ x * g_T_i ^ y.
+ forall (x, y:int), g_T ^ (x + y) = g_T ^ x * g_T ^ y.
 
 axiom G_1_pow_mult :
- forall (x, y:int),  (g_1_i ^ x) ^ y = g_1_i ^ (x * y).
+ forall (x, y:int),  (g_1 ^ x) ^ y = g_1 ^ (x * y).
 
 axiom G_T_pow_mult :
- forall (x, y:int),  (g_T_i ^ x) ^ y = g_T_i ^ (x * y).
+ forall (x, y:int),  (g_T ^ x) ^ y = g_T ^ (x * y).
 
 axiom G_1_log_pow : 
- forall (g_1_i':G_1), g_1_i ^ G_1_log(g_1_i') = g_1_i'.
+ forall (g_1':G_1), g_1 ^ G_1_log(g_1') = g_1'.
 
 axiom G_T_log_pow : 
- forall (g_T_i':G_T), g_T_i ^ G_T_log(g_T_i') = g_T_i'.
+ forall (g_T':G_T), g_T ^ G_T_log(g_T') = g_T'.
 
 axiom G_1_pow_mod : 
- forall (z:int), g_1_i ^ (z%%q) = g_1_i ^ z.
+ forall (z:int), g_1 ^ (z%%q) = g_1 ^ z.
 
 axiom G_T_pow_mod : 
- forall (z:int), g_T_i ^ (z%%q) = g_T_i ^ z.
+ forall (z:int), g_T ^ (z%%q) = g_T ^ z.
 
 axiom mod_add : 
  forall (x,y:int), (x%%q + y)%%q = (x + y)%%q.
@@ -86,9 +87,9 @@ pop Rand_G_1_exp   : () -> (int).
 pop Rand_G_1 : () -> (G_1).
 
 (* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)
-axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_1_i ^ y.
+axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_1 ^ y.
 
-adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; message -> G_1}.
+adversary Adv (adv_public_key : G_1) : (message * G_1) {(message) -> G_1; message -> G_1}.
 
 game BLS_EF = {
   var secret_key : int
@@ -123,7 +124,7 @@ game BLS_EF = {
     var h : G_1;
     count_Verify = count_Verify + 1;
     h = Hash(m);
-    v = (e(h, pk) = e(s, g));
+    v = (e(h, pk) = e(s, g_1));
     return v;
   }
 
@@ -146,7 +147,7 @@ game BLS_EF = {
     var dummy : bool;
 
     dummy=Init();
-    pk = g^secret_key;
+    pk = g_1^secret_key;
 
     (m, s) = A(pk);
 
@@ -160,7 +161,7 @@ game G_Inv_Sign = BLS_EF
 
 var hashes : (message, G_1) map
 var sigs : (message, G_1) map
-var given_1 : G_1
+var given_1 : G_1 (* analogous to the public key *)
 
   where Init = {
     count_Hash = 0;
@@ -182,8 +183,8 @@ var given_1 : G_1
     if(!in_dom(m, hashes)) {
       exp=Rand_G_1_exp();
 
-      hashes[m]=g_1_i^exp;      
-      sigs[m]=hashes[m]^secret_key;
+      hashes[m]=g_1^exp;      
+      sigs[m]=given_1^exp;
     }
     return hashes[m];
   }
@@ -198,7 +199,7 @@ var given_1 : G_1
   }
 
   and Main = {
-    var pk : G_1;    
+    var pk : G_1;
     var m : message;
     var h : G_1;
     var s : G_1;
@@ -206,7 +207,7 @@ var given_1 : G_1
     var dummy : bool;
 
     dummy=Init();
-    pk = g^secret_key;
+    pk = g_1^secret_key;
     given_1 = pk;
 
     (m, s) = A(pk);
@@ -218,10 +219,10 @@ var given_1 : G_1
 
 (* prove that the output of the hash functions is still the same *)
 equiv Mod_Hash : BLS_EF.Hash ~ G_Inv_Sign.Hash :    
-  ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
+  ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
-  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
+  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) =>
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
 sp.
@@ -235,10 +236,10 @@ save.
 
 (* Next we need to prove that the output of the Sign function is still the same *)
 equiv Mod_Sign : BLS_EF.Sign ~ G_Inv_Sign.Sign :
-  ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
+  ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) =>
     sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
-  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
+  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) =>
     sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
 
@@ -251,6 +252,7 @@ app 1 1
     h{2}=hashes{2}[m{2}]) &&
     ={m,secret_key,queried,count_Hash} &&
     rand_oracle{1} = hashes{2} &&
+    given_1{2}=g_1^secret_key{2} &&
     (forall (m_0 : message),
       in_dom (m_0,hashes{2}) =>
       sigs{2}[m_0] = hashes{2}[m_0] ^ secret_key{2}).
@@ -268,7 +270,7 @@ simpl.
 trivial.
 save.
 
-equiv Mod_Verify : BLS_EF.Verify ~ G_Inv_Sign.Verify : ={m, s, pk, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
+equiv Mod_Verify : BLS_EF.Verify ~ G_Inv_Sign.Verify : ={m, s, pk, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==> ={res,queried, count_Hash}.
 wp.
@@ -278,13 +280,13 @@ trivial.
 save.
 
 equiv Mod_A : BLS_EF.A ~ G_Inv_Sign.A : 
-={adv_public_key, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
+={adv_public_key, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
 (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})
   ==>
-  ={res, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
+  ={res, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) => 
-      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) by auto(={secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
+      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) by auto(={secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})).
     
@@ -331,7 +333,7 @@ save.
     if(!in_dom(m, hashes)) {
       exp=[0..q];
 
-      hashes[m]=g_1_i^exp;      
+      hashes[m]=g_1^exp;      
       sigs[m]=hashes[m]^secret_key;
     }
     return hashes[m];
@@ -366,23 +368,17 @@ save.
 *)
 
 game G_Choose_One = G_Inv_Sign
-
   var n_inject : int
   var m_inject : message
   var given_2 : G_1
 
   where Init = {
-    var b : int;
-
     count_Hash = 0;
-    given_1 = Rand_G_1();
     rand_oracle = empty_map;
     queried = [];
     hashes = empty_map;
     sigs = empty_map;
     n_inject = [1..limit_Hash];
-    b = Rand_G_1_exp();
-    given_2 = g^b;
     return true;
   }
 
@@ -396,25 +392,135 @@ game G_Choose_One = G_Inv_Sign
         (* hashes[m] = given_2 *)
       } (* else { *)
         exp=Rand_G_1_exp();
-        hashes[m]=g_1_i^exp;      
+        hashes[m]=g_1^exp;      
         sigs[m]=given_1^exp;
       (* } *)
     }
     return hashes[m];
   }
+
+  and Main = {
+    var pk : G_1;    
+    var m : message;
+    var s : G_1;
+    var v : bool;
+    var dummy : bool;
+    var b : int;
+
+    dummy=Init();
+    secret_key = Rand_G_1_exp();
+    b = Rand_G_1_exp();
+    given_1 = g_1^secret_key;
+    given_2 = g_1^b;
+
+    pk = given_1;
+
+    (m, s) = A(pk);
+
+    v = Verify(m, s, pk);
+    return v && !mem(m, queried);
+  }
 .
 
 (* prove that the output of the hash functions is still the same *)
 equiv Mod_Hash2 : G_Inv_Sign.Hash ~ G_Choose_One.Hash:    
-  ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle}
+  ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}
   ==>
-  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle}.
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}.
 derandomize.
-app 2 2 ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle}.
+app 2 2 ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1,exp_0}.
 wp.
 rnd.
 trivial.
 if.
+if{2}.
+wp.
+trivial.
+wp.
+trivial.
+trivial.
+save.
+
+(* Next we need to prove that the output of the Sign function is still the same *)
+equiv Mod_Sign2 : G_Inv_Sign.Sign ~ G_Choose_One.Sign :
+  ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}
+  ==>
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}.
+wp.
+call using Mod_Hash2.  
+trivial.
+save.
+
+equiv Mod_A2 : G_Inv_Sign.A ~ G_Choose_One.A : 
+  ={adv_public_key,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}
+  ==>
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} by auto(={secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}).
+
+equiv Mod_Verify2 : G_Inv_Sign.Verify ~ G_Choose_One.Verify : 
+  ={m,s,pk,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}
+  ==>
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}.
+wp.
+call using Mod_Hash2.
+wp.
+trivial.
+save.
+
+
+equiv E_G_Choose_One_unlimited : G_Inv_Sign.Main ~ G_Choose_One.Main : true ==> ={res}.
+call using Mod_Verify2.
+call using Mod_A2.
+wp.
+inline.
+wp.
+derandomize.
+wp.
+rnd{2}.
+rnd.
+trivial.
+save.
+
+equiv E_G_Choose_One : G_Inv_Sign.Main ~ G_Choose_One.Main : true ==> ={res && count_Hash < limit_Hash}.
+
+claim C_Basic : G_Choose_One.Main[res] = G_Inv_Sign.Main[res]
+using E_G_Choose_One.
+
+
+
+
+    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
+  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
+  (forall (m_0:message), in_dom(m_0,hashes{2}) =>
+    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
+
+wp.
+swap{1} 2.
+app 1 1 
+  (in_dom(m{1}, rand_oracle{1}) &&
+    in_dom(m{2}, hashes{2}) &&
+    h{1}=rand_oracle{1}[m{1}] &&
+    h{2}=hashes{2}[m{2}]) &&
+    ={m,secret_key,queried,count_Hash} &&
+    rand_oracle{1} = hashes{2} &&
+    given_1{2}=g_1^secret_key{2} &&
+    (forall (m_0 : message),
+      in_dom (m_0,hashes{2}) =>
+      sigs{2}[m_0] = hashes{2}[m_0] ^ secret_key{2}).
+inline.
+sp.
+if.
+derandomize.
+wp.
+apply : Rand_G_1_def().
+simpl.
+
+wp.
+simpl.
+
+trivial.
+save.
+
+
 
 
 
@@ -596,7 +702,7 @@ where Main = {
   var exp : int;
   exp = [0..q];
 
-  return g_1_i^exp;
+  return g_1^exp;
 }.
 
 equiv Test_equiv : Test1.Main ~ Test2.Main : true ==> ={res}.
@@ -625,7 +731,7 @@ game CDH_Generic = {
   var given_2 : G_1;
 
   fun Before(b : G_1) : (state * G_1) = {
-    return (null_state, g_1_i);
+    return (null_state, g_1);
   }
 
   fun After(t : state, m : message, s : G_1, b : G_1) : int = {
@@ -633,11 +739,11 @@ game CDH_Generic = {
   }
 
   fun Hash(m : message) : G_1 = {
-    return g_1_i;
+    return g_1;
   }
   
   fun Sign(m : message) : G_1 = {
-    return g_1_i;
+    return g_1;
   }
 
   abs A = Adv{Hash, Sign}
@@ -705,7 +811,7 @@ where Hash = {
     } else {
       exp=Rand_G_1_exp();
       sigs[m]=given_1^exp;
-      hashes[m]=g_1_i^exp;
+      hashes[m]=g_1^exp;
     }
     i=i+1;
   }
