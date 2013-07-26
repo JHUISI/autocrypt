@@ -166,8 +166,12 @@ def addGlobalVarsForHashes(outputECFile):
     outputString = "  var " + randomOracleVarName_EC + " : (message, G_1) map\n"
     outputECFile.write(outputString)
 
-def addHashFuncDef(outputECFile):
-    outputString = "\n  " + funcName_EC + " " + hashFuncName_EC + "(m : message) : G_1 = {\n"
+def addHashFuncDef(outputECFile, assignInfo, config):
+    hashGroupTypeOfSigFunc_SDL = getHashGroupTypeOfFunc(config.signFuncName_SDL, assignInfo, config)
+    hashGroupTypeOfSigFunc_EC = convertTypeSDLtoEC_Strings(hashGroupTypeOfSigFunc_SDL)
+
+    outputString = "\n  " + funcName_EC + " " + hashFuncName_EC + "(m : message) : "
+    outputString += hashGroupTypeOfSigFunc_EC + " = {\n"
     outputString += "    if(!in_dom(m, " + randomOracleVarName_EC + ")) {\n"
     outputString += "      " + randomOracleVarName_EC + "[m] = Rand_G_1();\n"
     outputString += "    }\n"
@@ -176,9 +180,9 @@ def addHashFuncDef(outputECFile):
 
     outputECFile.write(outputString)
 
-def addStatementsForPresenceOfHashes(outputECFile):
+def addStatementsForPresenceOfHashes(outputECFile, assignInfo, config):
     addGlobalVarsForHashes(outputECFile)
-    addHashFuncDef(outputECFile)
+    addHashFuncDef(outputECFile, assignInfo, config)
 
 def getInputSDLFileMetadata(inputSDLFileName):
     parseFile(inputSDLFileName, False, True)
@@ -777,6 +781,28 @@ def getHashGroupTypeOfFunc(funcName, assignInfo, config):
 
     return hashesGroupTypesInFunc[0]
 
+def writeInputVarsForSignFunc(outputECFile, assignInfo, config):
+    outputString = ""
+
+    inputOutputVarsDict = getInputOutputVarsDictOfFunc(config.signFuncName_SDL)
+
+    for varName in inputOutputVarsDict[inputKeyword]:
+        #in EC, secret key is global, so no need to declare it here
+        if (varName == config.secretKeyName_SDL):
+            continue
+
+        if (varName == config.messageName_SDL):
+            outputString += messageType_EC + ", "
+            continue
+
+        varType_EC = getVarTypeFromVarName_EC(varName, config.signFuncName_SDL)
+        outputString += varType_EC + ", "
+
+    lenOutputString = len(outputString)
+    outputString = outputString[0:(lenOutputString - len(", "))]
+
+    outputECFile.write(outputString)
+
 def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
     groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
 
@@ -793,7 +819,18 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
     hashGroupTypeOfSigFunc_SDL = getHashGroupTypeOfFunc(config.signFuncName_SDL, assignInfo, config)
     hashGroupTypeOfSigFunc_EC = convertTypeSDLtoEC_Strings(hashGroupTypeOfSigFunc_SDL)
 
-    outputString += hashGroupTypeOfSigFunc_EC
+    outputString += hashGroupTypeOfSigFunc_EC + "; ("
+
+    outputECFile.write(outputString)
+    outputString = ""
+
+    # write input vars for sign function
+    writeInputVarsForSignFunc(outputECFile, assignInfo, config)
+
+    outputString += ") -> "
+
+    outputTypeOfSignFunc = getTypeOfOutputVar(config.signFuncName_SDL, assignInfo)
+    outputString += outputTypeOfSignFunc
 
     outputString += "\n\n"
 
@@ -828,7 +865,7 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
 
     atLeastOneHashCall = getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo)
     if (atLeastOneHashCall == True):
-        addStatementsForPresenceOfHashes(outputECFile)
+        addStatementsForPresenceOfHashes(outputECFile, assignInfo, config)
 
     convertSignFunc(outputECFile, config, assignInfo, astNodes)
 
