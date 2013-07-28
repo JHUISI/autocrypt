@@ -88,7 +88,7 @@ pop Rand_G_1 : () -> (G_1).
 
 axiom Rand_G_1_def() : x = Rand_G_1() ~ y = [0..q] : true ==> x = g_1_i ^ y.
 
-adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; (message) -> G_1
+adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; (message) -> G_1; (message, Z_R) -> G_1; (message, Z_R) -> G_1}.
 
 game blsfull_EF = {
   var sk : Z_R
@@ -114,7 +114,27 @@ game blsfull_EF = {
     return output;
   }
 
-  abs A = Adv{Hash, Sign}
+  fun testFunction(m : message, var2 : Z_R) : G_1 = {
+    var testVariable : G_1;
+    var hh : G_1;
+    var output : G_1;
+    hh = (Hash(M) ^ var2);
+    testVariable = (hh ^ sk);
+    output = testVariable;
+    return output;
+  }
+
+  fun testFunction2(m : message, var3 : Z_R) : G_1 = {
+    var testVariable3 : G_1;
+    var hhh : G_1;
+    var output : G_1;
+    hhh = (Hash(M) ^ var3);
+    testVariable3 = (hhh ^ sk);
+    output = testVariable3;
+    return output;
+  }
+
+  abs A = Adv{Hash, Sign, testFunction, testFunction2}
 
   fun Verify(pk : G_1, m : message, sig : G_1, g : G_1) : bool = {
     var output : bool;
@@ -126,6 +146,7 @@ game blsfull_EF = {
 
   fun Init() : bool = {
     var x : Z_R;
+    var var3 : Z_R;
     var g : G_1;
     var var2 : Z_R;
     g = Rand_G_1();
@@ -133,6 +154,7 @@ game blsfull_EF = {
     pk = (g ^ x);
     sk = x;
     var2 = Rand_Z_R();
+    var3 = Rand_Z_R();
     rand_oracle = empty_map;
     queried = [];
     return true;

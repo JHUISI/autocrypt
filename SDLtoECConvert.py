@@ -583,7 +583,7 @@ def getECVarNameAndTypeFromSDLName(varName, config, assignInfo, funcName):
 
     sys.exit("getECVarNameAndTypeFromSDLName in SDLtoECConvert.py:  could not handle case of varName (" + str(varName) + ") passed in.  Need to add more logic for it.")
 
-def addAdvAbstractDef(outputECFile, atLeastOneHashCall):
+def addAdvAbstractDef(outputECFile, atLeastOneHashCall, assignInfo, config):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += abstractKeyword_EC + " " + adversaryIdentifier_EC + " "
@@ -592,8 +592,20 @@ def addAdvAbstractDef(outputECFile, atLeastOneHashCall):
     if (atLeastOneHashCall == True):
         outputString += hashFuncName_EC + ", "
 
-    outputString += signFuncName_EC + funcEndChar_EC + "\n\n"
+    outputString += signFuncName_EC 
 
+    extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
+
+    if (len(extraFuncsForAdversary) == 0):
+        outputString += funcEndChar_EC + "\n\n"
+        outputECFile.write(outputString)
+        return
+
+    for extraFunc in extraFuncsForAdversary:
+        outputString += ", "
+        outputString += extraFunc
+
+    outputString += funcEndChar_EC + "\n\n"
     outputECFile.write(outputString)
 
 def writeVerifyArgsDeclForMain(outputECFile, config, assignInfo):
@@ -781,10 +793,13 @@ def getHashGroupTypeOfFunc(funcName, assignInfo, config):
 
     return hashesGroupTypesInFunc[0]
 
-def writeInputVarsForSignFunc(outputECFile, assignInfo, config):
+def getInputVarsForFunc(outputECFile, assignInfo, config, funcName):
+    if (funcName not in assignInfo):
+        sys.exit("getInputVarsForFunc in SDLtoECConvert.py:  function name passed in is not in assignInfo parameter passed in.")
+
     outputString = ""
 
-    inputOutputVarsDict = getInputOutputVarsDictOfFunc(config.signFuncName_SDL)
+    inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
 
     for varName in inputOutputVarsDict[inputKeyword]:
         #in EC, secret key is global, so no need to declare it here
@@ -795,13 +810,13 @@ def writeInputVarsForSignFunc(outputECFile, assignInfo, config):
             outputString += messageType_EC + ", "
             continue
 
-        varType_EC = getVarTypeFromVarName_EC(varName, config.signFuncName_SDL)
+        varType_EC = getVarTypeFromVarName_EC(varName, funcName)
         outputString += varType_EC + ", "
 
     lenOutputString = len(outputString)
     outputString = outputString[0:(lenOutputString - len(", "))]
 
-    outputECFile.write(outputString)
+    return outputString
 
 def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
     groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
@@ -825,18 +840,45 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
     outputString = ""
 
     # write input vars for sign function
-    writeInputVarsForSignFunc(outputECFile, assignInfo, config)
+    outputString += getInputVarsForFunc(outputECFile, assignInfo, config, config.signFuncName_SDL)
 
     outputString += ") -> "
 
     outputTypeOfSignFunc = getTypeOfOutputVar(config.signFuncName_SDL, assignInfo)
     outputString += outputTypeOfSignFunc
 
+    outputECFile.write(outputString)
+    outputString = ""
+
     if (len(extraFuncsForAdversary) == 0):
         outputString += "}."
         outputString += "\n\n"
         outputECFile.write(outputString)
         return
+
+    for extraFunc in extraFuncsForAdversary:
+        outputString += "; ("
+        outputString += getInputVarsForFunc(outputECFile, assignInfo, config, extraFunc)
+        outputString += ") -> "
+        outputTypeOfFunc = getTypeOfOutputVar(extraFunc, assignInfo)
+        outputString += outputTypeOfFunc
+
+    outputString += "}.\n\n"
+
+    outputECFile.write(outputString)
+
+def writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes):
+    extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
+
+    if (len(extraFuncsForAdversary) == 0):
+        return
+
+    for extraFunc in extraFuncsForAdversary:
+        writeFuncDecl(outputECFile, extraFunc, extraFunc, config, assignInfo)
+        writeVarDecls(outputECFile, extraFunc, assignInfo, [])
+        writeBodyOfFunc(outputECFile, extraFunc, astNodes, config, [])
+        writeReturnValue(outputECFile, extraFunc, assignInfo)
+        writeFuncEnd(outputECFile)
 
 def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
@@ -871,7 +913,9 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
 
     convertSignFunc(outputECFile, config, assignInfo, astNodes)
 
-    addAdvAbstractDef(outputECFile, atLeastOneHashCall)
+    writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes)
+
+    addAdvAbstractDef(outputECFile, atLeastOneHashCall, assignInfo, config)
 
     convertVerifyFunc(outputECFile, config, assignInfo, astNodes)
 

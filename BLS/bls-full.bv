@@ -17,6 +17,7 @@ input := None
  pk := g^x
  sk := x
  var2 := random(ZR)
+ var3 := random(ZR)
 output := list{pk, sk, g, var2}
 END :: func:keygen
 
@@ -26,6 +27,13 @@ hh := (H(M, G2)^var2)
 testVariable := (hh^sk)
 output := testVariable
 END :: func:sign
+
+BEGIN :: func:testFunction2
+input := list{sk, M, var3}
+hhh := (H(M, G1)^var3)
+testVariable3 := (hhh^sk)
+output := testVariable3
+END :: func:testFunction2
 
 BEGIN :: func:sign
 input := list{sk, M}

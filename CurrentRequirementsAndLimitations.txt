@@ -8,3 +8,7 @@ so we need some variable to analyze.
 
 -- All hashes performed in the signature function must hash to the same group (i.e., you cannot have one
 variable hashing to G1 and another hashing to G2).
+
+-- For any function that is passed to the adversary (which is all functions except keygen, setup, and 
+verify), the output must be one variable name, nothing else.  This is b/c we have to automatically infer
+the type of the output of each function, so we need some variable to analyze.
