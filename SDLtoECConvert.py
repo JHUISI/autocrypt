@@ -832,9 +832,11 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
     outputTypeOfSignFunc = getTypeOfOutputVar(config.signFuncName_SDL, assignInfo)
     outputString += outputTypeOfSignFunc
 
-    outputString += "\n\n"
-
-    outputECFile.write(outputString)
+    if (len(extraFuncsForAdversary) == 0):
+        outputString += "}."
+        outputString += "\n\n"
+        outputECFile.write(outputString)
+        return
 
 def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
