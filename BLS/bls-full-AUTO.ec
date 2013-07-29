@@ -109,7 +109,7 @@ game blsfull_EF = {
     return rand_oracle[m];
   }
 
-  fun Sign(m : message) : G_1 = {
+  fun Sign(M : message) : G_1 = {
     var sig2 : G_1;
     var sig : G_1;
     var output : G_1;
@@ -121,7 +121,7 @@ game blsfull_EF = {
     return output;
   }
 
-  fun testFunction(m : message, var2 : Z_R) : G_1 = {
+  fun testFunction(M : message, var2 : Z_R) : G_1 = {
     var testVariable : G_1;
     var hh : G_1;
     var output : G_1;
@@ -132,7 +132,7 @@ game blsfull_EF = {
     return output;
   }
 
-  fun testFunction2(m : message, var3 : Z_R) : G_1 = {
+  fun testFunction2(M : message, var3 : Z_R) : G_1 = {
     var testVariable3 : G_1;
     var hhh : G_1;
     var output : G_1;
@@ -145,7 +145,7 @@ game blsfull_EF = {
 
   abs A = Adv{Hash, Sign, testFunction, testFunction2}
 
-  fun Verify(pk : G_1, m : message, sig : G_1, g : G_1) : bool = {
+  fun Verify(pk : G_1, M : message, sig : G_1, g : G_1) : bool = {
     var output : bool;
     var h : G_1;
     count_Verify = count_Verify + 1
@@ -176,12 +176,13 @@ game blsfull_EF = {
   }
 
   fun Main() : bool = {
-    var m : message;
+    var M : message;
     var sig : G_1;
     var g : G_1;
-    var s : G_1;
     var v : bool;
     var dummy : bool;
 
     dummy = Init();
-    (
+    (m, s) = A(pk);
+
+    v = Verify(pk, M, sig, g

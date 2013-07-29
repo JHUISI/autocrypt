@@ -584,7 +584,7 @@ def getECVarNameAndTypeFromSDLName(varName, config, assignInfo, funcName):
         return ""
 
     if (varName == config.messageName_SDL):
-        return messageName_EC + " : " + messageType_EC
+        return config.messageName_SDL + " : " + messageType_EC
 
     if DEBUG : print("getECVarNameAndTypeFromSDLName:  varName and funcName are ", varName, " and ", funcName)
 
@@ -620,6 +620,22 @@ def addAdvAbstractDef(outputECFile, atLeastOneHashCall, assignInfo, config):
     outputECFile.write(outputString)
 
 def writeVerifyArgsDeclForMain(outputECFile, config, assignInfo):
+    (justInputVarsForVerifyFunc, listOfVarsToNotDeclare) = getJustInputVarsForFunc(assignInfo, config, config.verifyFuncName_SDL)
+
+    outputString = ""
+
+    for inputVarName in justInputVarsForVerifyFunc:
+        if (inputVarName in listOfVarsToNotDeclare):
+            continue
+
+        outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+        outputString += varKeyword_EC + " "
+        outputString += getECVarNameAndTypeFromSDLName(inputVarName, config, assignInfo, config.verifyFuncName_SDL)
+        outputString += endOfLineOperator_EC + "\n"
+
+    outputECFile.write(outputString)
+
+def getJustInputVarsForFunc(assignInfo, config, funcName):
     publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
     secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
@@ -636,38 +652,27 @@ def writeVerifyArgsDeclForMain(outputECFile, config, assignInfo):
     if (outputKeyword not in listOfVarsToNotDeclare):
         listOfVarsToNotDeclare.append(outputKeyword)
 
-    if (config.verifyFuncName_SDL not in assignInfo):
-        sys.exit("writeVerifyArgsDeclForMain in SDLtoECConvert.py:  verify function name from SDL is not in assignInfo.")
+    if (funcName not in assignInfo):
+        sys.exit("getJustInputVarsForFunc in SDLtoECConvert.py:  function name parameter passed in is not in assignInfo.")
 
-    if (inputKeyword not in assignInfo[config.verifyFuncName_SDL]):
-        sys.exit("writeVerifyArgsDeclForMain in SDLtoECConvert.py:  input keyword is not in assignInfo[verify func name from SDL].")
+    if (inputKeyword not in assignInfo[funcName]):
+        sys.exit("getJustInputVarsForFunc in SDLtoECConvert.py:  input keyword is not in assignInfo[funcName parameter passed in].")
 
-    inputVarInfoObj = assignInfo[config.verifyFuncName_SDL][inputKeyword]
+    inputVarInfoObj = assignInfo[funcName][inputKeyword]
     
     if (inputVarInfoObj == None):
-        sys.exit("writeVerifyArgsDeclForMain in SDLtoECConvert.py:  input variable information object extracted from assignInfo[verify function name from SDL] is None.")
+        sys.exit("getJustInputVarsForFunc in SDLtoECConvert.py:  input variable information object extracted from assignInfo[funcName] is None.")
 
     inputVarNamesList = []
 
     if ( (inputVarInfoObj.getIsList() == True) and (len(inputVarInfoObj.getListNodesList()) > 0) ):
         for inputVarName in inputVarInfoObj.getListNodesList():
             if (inputVarName in inputVarNamesList):
-                sys.exit("writeVerifyArgsDeclForMain in SDLtoECConvert.py:  duplicate variable names found in input variable names.")
+                sys.exit("getJustInputVarsForFunc in SDLtoECConvert.py:  duplicate variable names found in input variable names.")
 
             inputVarNamesList.append(inputVarName)
 
-    outputString = ""
-
-    for inputVarName in inputVarNamesList:
-        if (inputVarName in listOfVarsToNotDeclare):
-            continue
-
-        outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
-        outputString += varKeyword_EC + " "
-        outputString += getECVarNameAndTypeFromSDLName(inputVarName, config, assignInfo, config.verifyFuncName_SDL)
-        outputString += endOfLineOperator_EC + "\n"
-
-    outputECFile.write(outputString)
+    return (inputVarNamesList, listOfVarsToNotDeclare)
 
 def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall):
     outputString = ""
@@ -695,14 +700,31 @@ def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
 
     writeExtraVarsNeededForMain(outputECFile, config, assignInfo)
     writeCallToInit(outputECFile)
-    writeCallToAbstractAdversaryFunction(outputECFile)
+    writeCallToAbstractAdversaryFunction(outputECFile, config)
+    writeCallToVerify(outputECFile, assignInfo, config)
 
-def writeCallToAbstractAdversaryFunction(outputECFile):
+def writeCallToVerify(outputECFile, assignInfo, config):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
-    outputString += "("
+    outputString += vVarInMain_EC + " " + assignmentOperator_EC + " " + verifyFuncName_EC + "("
+    (inputVarsList, listOfVarsToNotDeclare) = getJustInputVarsForFunc(assignInfo, config, config.verifyFuncName_SDL)
+    for inputVar in inputVarsList:
+        outputString += inputVar + ", "
 
-    #(m, s) = A(pk);
+    lengthOfNewOutputString = len(outputString) - len(", ")
+
+    outputString = outputString[0:lengthOfNewOutputString]
+
+#v = Verify(m, s, pk);
+
+    outputECFile.write(outputString)
+
+def writeCallToAbstractAdversaryFunction(outputECFile, config):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += "(" + messageVarNameInMain_EC + ", " + sVarInMain_EC + ") " + assignmentOperator_EC
+    outputString += " " + adversaryIdentifier_EC + "(" + config.publicKeyName_SDL + ");\n\n"
+    #outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
 
     outputECFile.write(outputString)
 
@@ -716,10 +738,10 @@ def writeCallToInit(outputECFile):
 
 def writeExtraVarsNeededForMain(outputECFile, config, assignInfo):
     outputString = ""
-    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
-    outputString += varKeyword_EC + " " + sVarInMain_EC + " : "
-    groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
-    outputString += groupTypeOfSignatureVariable + ";\n"
+    #outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    #outputString += varKeyword_EC + " " + sVarInMain_EC + " : "
+    #groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
+    #outputString += groupTypeOfSignatureVariable + ";\n"
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += varKeyword_EC + " " + vVarInMain_EC + " : " + booleanType_EC + ";\n"
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
