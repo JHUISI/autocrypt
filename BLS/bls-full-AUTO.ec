@@ -94,9 +94,15 @@ game blsfull_EF = {
   var sk : Z_R
   var pk : G_1
   var queried : message list
+  var count_Hash : int
+  var count_testFunction : int
+  var count_testFunction2 : int
+  var count_Sign : int
+  var count_Verify : int
   var rand_oracle : (message, G_1) map
 
   fun Hash(m : message) : G_1 = {
+    count_Hash = count_Hash + 1
     if(!in_dom(m, rand_oracle)) {
       rand_oracle[m] = Rand_G_1();
     }
@@ -107,6 +113,7 @@ game blsfull_EF = {
     var sig2 : G_1;
     var sig : G_1;
     var output : G_1;
+    count_Sign = count_Sign + 1
     sig = (Hash(M) ^ sk);
     sig2 = Hash(M);
     output = sig;
@@ -118,6 +125,7 @@ game blsfull_EF = {
     var testVariable : G_1;
     var hh : G_1;
     var output : G_1;
+    count_testFunction = count_testFunction + 1
     hh = (Hash(M) ^ var2);
     testVariable = (hh ^ sk);
     output = testVariable;
@@ -128,6 +136,7 @@ game blsfull_EF = {
     var testVariable3 : G_1;
     var hhh : G_1;
     var output : G_1;
+    count_testFunction2 = count_testFunction2 + 1
     hhh = (Hash(M) ^ var3);
     testVariable3 = (hhh ^ sk);
     output = testVariable3;
@@ -139,12 +148,18 @@ game blsfull_EF = {
   fun Verify(pk : G_1, m : message, sig : G_1, g : G_1) : bool = {
     var output : bool;
     var h : G_1;
+    count_Verify = count_Verify + 1
     h = Hash(M);
     output = (e(h, pk) = e(sig, g));
     return output;
   }
 
   fun Init() : bool = {
+    count_testFunction = 0;
+    count_testFunction2 = 0;
+    count_Hash = 0;
+    count_Sign = 0;
+    count_Verify = 0;
     var x : Z_R;
     var var3 : Z_R;
     var g : G_1;
@@ -164,3 +179,9 @@ game blsfull_EF = {
     var m : message;
     var sig : G_1;
     var g : G_1;
+    var s : G_1;
+    var v : bool;
+    var dummy : bool;
+
+    dummy = Init();
+    (

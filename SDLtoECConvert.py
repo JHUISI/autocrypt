@@ -2,6 +2,12 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+initFuncName_EC = "Init"
+dummyVarInMain_EC = "dummy"
+vVarInMain_EC = "v"
+additionOperator_EC = "+"
+intType_EC = "int"
+countVarPrefix = "count_"
 advPubKeyVarName_EC = "adv_public_key"
 adversaryVarName_EC = "Adv"
 adversaryKeyword_EC = "adversary"
@@ -172,6 +178,9 @@ def addHashFuncDef(outputECFile, assignInfo, config):
 
     outputString = "\n  " + funcName_EC + " " + hashFuncName_EC + "(m : message) : "
     outputString += hashGroupTypeOfSigFunc_EC + " = {\n"
+    outputECFile.write(outputString)
+    writeCountVarIncrement(outputECFile, hashFuncName_EC)
+    outputString = ""
     outputString += "    if(!in_dom(m, " + randomOracleVarName_EC + ")) {\n"
     outputString += "      " + randomOracleVarName_EC + "[m] = Rand_G_1();\n"
     outputString += "    }\n"
@@ -464,6 +473,7 @@ def addBoolRetVarForVerifyFunc(outputECFile):
 def convertSignFunc(outputECFile, config, assignInfo, astNodes):
     writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config, assignInfo)
     writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo, [])
+    writeCountVarIncrement(outputECFile, signFuncName_EC)
     writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes, config, [])
     writeMessageAdditionToQueriedList(outputECFile)
     writeReturnValue(outputECFile, config.signFuncName_SDL, assignInfo)
@@ -473,6 +483,7 @@ def convertVerifyFunc(outputECFile, config, assignInfo, astNodes):
     writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo)
     writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo, [])
     #addBoolRetVarForVerifyFunc(outputECFile)
+    writeCountVarIncrement(outputECFile, verifyFuncName_EC)
     writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config, [])
     writeReturnValue(outputECFile, config.verifyFuncName_SDL, assignInfo)
     writeFuncEnd(outputECFile)
@@ -682,12 +693,62 @@ def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
 
     #outputECFile.write(outputString)
 
+    writeExtraVarsNeededForMain(outputECFile, config, assignInfo)
+    writeCallToInit(outputECFile)
+    writeCallToAbstractAdversaryFunction(outputECFile)
+
+def writeCallToAbstractAdversaryFunction(outputECFile):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += "("
+
+    #(m, s) = A(pk);
+
+    outputECFile.write(outputString)
+
+def writeCallToInit(outputECFile):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += dummyVarInMain_EC + " " + assignmentOperator_EC + " " + initFuncName_EC 
+    outputString += "();\n"
+
+    outputECFile.write(outputString)
+
+def writeExtraVarsNeededForMain(outputECFile, config, assignInfo):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += varKeyword_EC + " " + sVarInMain_EC + " : "
+    groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
+    outputString += groupTypeOfSignatureVariable + ";\n"
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += varKeyword_EC + " " + vVarInMain_EC + " : " + booleanType_EC + ";\n"
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += varKeyword_EC + " " + dummyVarInMain_EC + " : " + booleanType_EC + ";\n\n"
+
+    outputECFile.write(outputString)
+
+def initializeCountVars(outputECFile, config, assignInfo):
+    allFuncsWithCountVars = getExtraFuncsForAdversary(assignInfo, config)
+    allFuncsWithCountVars.append(hashFuncName_EC)
+    allFuncsWithCountVars.append(signFuncName_EC)
+    allFuncsWithCountVars.append(verifyFuncName_EC)
+
+    outputString = ""
+
+    for funcName in allFuncsWithCountVars:
+        outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+        outputString += countVarPrefix + funcName + " = 0;\n"
+
+    outputECFile.write(outputString)
+
 def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += funcName_EC + " Init() : " + booleanType_EC + " = {\n"
 
     outputECFile.write(outputString)
+
+    initializeCountVars(outputECFile, config, assignInfo)
 
     convertKeygenFunc(outputECFile, config, assignInfo, astNodes)
 
@@ -876,9 +937,38 @@ def writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes):
     for extraFunc in extraFuncsForAdversary:
         writeFuncDecl(outputECFile, extraFunc, extraFunc, config, assignInfo)
         writeVarDecls(outputECFile, extraFunc, assignInfo, [])
+        writeCountVarIncrement(outputECFile, extraFunc)
         writeBodyOfFunc(outputECFile, extraFunc, astNodes, config, [])
         writeReturnValue(outputECFile, extraFunc, assignInfo)
         writeFuncEnd(outputECFile)
+
+def addCountVars(outputECFile, assignInfo, config, atLeastOneHashCall):
+    outputString = ""
+
+    allFuncsWithCountVars = getExtraFuncsForAdversary(assignInfo, config)
+
+    currentNumSpacesToUse = numSpacesForIndent
+
+    if (atLeastOneHashCall == True):
+        outputString += writeNumOfSpacesToString(currentNumSpacesToUse)
+        outputString += varKeyword_EC + " " + countVarPrefix + hashFuncName_EC + " : " + intType_EC + "\n"
+
+    allFuncsWithCountVars.append(signFuncName_EC)
+    allFuncsWithCountVars.append(verifyFuncName_EC)
+
+    for countVarFuncName in allFuncsWithCountVars:
+        outputString += writeNumOfSpacesToString(currentNumSpacesToUse)
+        outputString += varKeyword_EC + " " + countVarPrefix + countVarFuncName + " : " + intType_EC + "\n"
+
+    outputECFile.write(outputString)
+
+def writeCountVarIncrement(outputECFile, funcName):
+    outputString = ""
+    currentNumSpacesToUse = 4
+    outputString += writeNumOfSpacesToString(currentNumSpacesToUse)
+    outputString += countVarPrefix + funcName + " " + assignmentOperator_EC + " "
+    outputString += countVarPrefix + funcName + " " + additionOperator_EC + " 1\n"
+    outputECFile.write(outputString)
 
 def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
@@ -908,6 +998,9 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     addGlobalVars(outputECFile, assignInfo, config)
 
     atLeastOneHashCall = getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo)
+
+    addCountVars(outputECFile, assignInfo, config, atLeastOneHashCall)
+
     if (atLeastOneHashCall == True):
         addStatementsForPresenceOfHashes(outputECFile, assignInfo, config)
 
