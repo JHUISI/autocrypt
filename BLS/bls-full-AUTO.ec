@@ -183,6 +183,6 @@ game blsfull_EF = {
     var dummy : bool;
 
     dummy = Init();
-    (m, s) = A(pk);
+    (M, sig) = A(pk);
 
     v = Verify(pk, M, sig, g

@@ -679,25 +679,9 @@ def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
     outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += funcName_EC + " Main() : " + booleanType_EC + " " + assignmentOperator_EC + " "
     outputString += funcStartChar_EC + "\n"
-
     outputECFile.write(outputString)
 
-    '''
-    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
-    outputString += varKeyword_EC + " " + messageVarNameInMain_EC + " : " + messageType_EC
-    outputString += endOfLineOperator_EC + "\n"
-    '''
-
     writeVerifyArgsDeclForMain(outputECFile, config, assignInfo)
-
-    '''
-    outputString = ""
-    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
-    outputString += varKeyword_EC + " " + sVarInMain_EC + " : G_1" + endOfLineOperator_EC + "\n"
-    '''
-
-    #outputECFile.write(outputString)
-
     writeExtraVarsNeededForMain(outputECFile, config, assignInfo)
     writeCallToInit(outputECFile)
     writeCallToAbstractAdversaryFunction(outputECFile, config)
@@ -722,7 +706,8 @@ def writeCallToVerify(outputECFile, assignInfo, config):
 def writeCallToAbstractAdversaryFunction(outputECFile, config):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
-    outputString += "(" + messageVarNameInMain_EC + ", " + sVarInMain_EC + ") " + assignmentOperator_EC
+    outputString += "(" + config.messageName_SDL + ", " + config.signatureVarName_SDL + ") "
+    outputString += assignmentOperator_EC
     outputString += " " + adversaryIdentifier_EC + "(" + config.publicKeyName_SDL + ");\n\n"
     #outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
 
