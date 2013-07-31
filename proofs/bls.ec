@@ -503,7 +503,15 @@ using E_G_Choose_One.
 
 equiv E_G_Choose_One_Prob : G_Choose_One.Main ~ G_Choose_One.Main : true ==> (enum[adv_m] > 0 && enum[adv_m] < count_Hash)
 
-note that adv_m in_dom thing
+note that adv_m in_dom thing (because verify calls hash and verify gets called)
+
+we need to complete this proof
+then we can make a probability claim about m_inject = enum[adv_m]
+completing the proof will first require adding enum
+we may need to rework hash count a little to so that it doesn't count repeated queries.  Hopefully we can avoid that though.
+
+
+
 
 (* in_dom => i > 0 and i < q *)
 
