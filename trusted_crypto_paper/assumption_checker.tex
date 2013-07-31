@@ -1,3 +1,12 @@
 \subsection{Assumption Checker}
 
-\jaa{fill in}
+\jaa{Rough draft}
+The objective of our assumption checker is to determine if the proof of security for a signature or encryption scheme indeed reduces to one of our trusted hardness assumptions. These trusted assumptions are system dependent and are configured by a server wishing to accept client connections. If the checker determines that the proof satisfies this condition in addition to a few others, we proceed with checking the proof with the $\easycrypt$ tool. Otherwise, the proof is rejected and the accompanying implementation is considered untrusted. 
+
+%There are several necessary bits… in particular, \dots
+
+%Presence of a minimal set of axioms. 
+%Presence of a reduction to a hardness assumption that is trusted. 
+%Presence of a reasonable probability claims. 
+
+%EasyCrypt must produce QED on the execution of the proof. This is probably the last step in which we just execute the proof to determine if the specifications can be proven. The proof must terminate with a QED (in a reasonable amount of time), otherwise, we have to reject the proof.
