@@ -1,0 +1,42 @@
+\documentclass[letterpaper,fullpage,10pt]{article}
+\usepackage{fullpage,epsfig,endnotes, multirow,latexsym,amssymb,amsmath,color,pdfpages,url}
+\usepackage[nounderscore]{syntax}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\algrenewcommand{\algorithmiccomment}[1]{\hskip3em$\rightarrow$ #1}
+
+\input{localdefs}
+
+\begin{document}
+
+%don't want date printed
+\date{}
+
+%make title bold and 14 pt font (Latex default is non-bold, 16 pt)
+% filler title
+\title{Towards Verification of Proof-carrying Scheme Descriptions}
+
+\author{-}
+
+\maketitle
+
+\begin{abstract}
+\input{abstract}
+\end{abstract}
+
+% page numbers needed for submission
+\pagenumbering{arabic}
+
+\input{introduction}
+\input{background}
+\input{overview}
+\input{related}
+\input{architecture}
+\input{implementation}
+\input{future}
+\input{conclusion}
+
+\bibliographystyle{plain}
+\bibliography{}
+
+\end{document}
