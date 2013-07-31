@@ -370,6 +370,7 @@ save.
 game G_Choose_One = G_Inv_Sign
   var n_inject : int
   var m_inject : message
+  var m_adv : message
   var given_2 : G_1
 
   where Init = {
@@ -401,7 +402,6 @@ game G_Choose_One = G_Inv_Sign
 
   and Main = {
     var pk : G_1;    
-    var m : message;
     var s : G_1;
     var v : bool;
     var dummy : bool;
@@ -415,10 +415,10 @@ game G_Choose_One = G_Inv_Sign
 
     pk = given_1;
 
-    (m, s) = A(pk);
+    (m_adv, s) = A(pk);
 
-    v = Verify(m, s, pk);
-    return v && !mem(m, queried);
+    v = Verify(m_adv, s, pk);
+    return v && !mem(m_adv, queried);
   }
 .
 
@@ -480,54 +480,37 @@ rnd.
 trivial.
 save.
 
-equiv E_G_Choose_One : G_Inv_Sign.Main ~ G_Choose_One.Main : true ==> ={res && count_Hash < limit_Hash}.
+equiv E_G_Choose_One : G_Inv_Sign.Main ~ G_Choose_One.Main : true ==> ={res} && (count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}.
+call using Mod_Verify2.
+call using Mod_A2.
+wp.
+inline.
+derandomize.
+wp.
+swap{2} -1.
+rnd.
+rnd{2}.
+rnd{2}.
+trivial.
+save.
 
 claim C_Basic : G_Choose_One.Main[res] = G_Inv_Sign.Main[res]
 using E_G_Choose_One.
 
 
+claim C_Hash_Lim : G_Choose_One.Main[res && count_Hash < limit_Hash] = G_Inv_Sign.Main[res && count_Hash < limit_Hash]
+using E_G_Choose_One.
 
+equiv E_G_Choose_One_Prob : G_Choose_One.Main ~ G_Choose_One.Main : true ==> (enum[adv_m] > 0 && enum[adv_m] < count_Hash)
 
-    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
-  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
-  (forall (m_0:message), in_dom(m_0,hashes{2}) =>
-    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
+note that adv_m in_dom thing
 
-wp.
-swap{1} 2.
-app 1 1 
-  (in_dom(m{1}, rand_oracle{1}) &&
-    in_dom(m{2}, hashes{2}) &&
-    h{1}=rand_oracle{1}[m{1}] &&
-    h{2}=hashes{2}[m{2}]) &&
-    ={m,secret_key,queried,count_Hash} &&
-    rand_oracle{1} = hashes{2} &&
-    given_1{2}=g_1^secret_key{2} &&
-    (forall (m_0 : message),
-      in_dom (m_0,hashes{2}) =>
-      sigs{2}[m_0] = hashes{2}[m_0] ^ secret_key{2}).
-inline.
-sp.
-if.
-derandomize.
-wp.
-apply : Rand_G_1_def().
-simpl.
+(* in_dom => i > 0 and i < q *)
 
-wp.
-simpl.
-
-trivial.
-save.
-
-
-
-
+claim C_Hash_Lim2 : G_Choose_One.Main[res && count_Hash<limit_Hash && m_inject=m_adv] >= (1%r)/(limit_Hash%r) * G_Inv_Sign.Main[res && count_Hash < limit_Hash]
+compute.
 
 (* here *)
-
-
-
 
 derandomize.
 wp.
