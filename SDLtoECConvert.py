@@ -2,6 +2,11 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+gameEndChar_EC = "."
+memKeyword_EC = "mem"
+notOperator_EC = "!"
+andOperator_EC = "&&"
+constantGeneratorVarName_EC = "g_1"
 initFuncName_EC = "Init"
 dummyVarInMain_EC = "dummy"
 vVarInMain_EC = "v"
@@ -18,7 +23,7 @@ emptyMapSymbol_EC = "[]"
 emptyMapName_EC = "empty_map"
 randomOracleVarName_EC = "rand_oracle"
 randomG1GenerationStmt_EC = "Rand_G_1()"
-randomZRGenerationStmt_EC = "Rand_Z_R()"
+randomZRGenerationStmt_EC = "Rand_G_1_exp()"
 funcName_EC = "fun"
 trueKeyword_EC = "true"
 trueKeyword_SDL = "True"
@@ -218,7 +223,7 @@ def getVarTypeFromVarName_EC(varName, funcName):
     varType_EC = convertTypeSDLtoEC(varType_SDL)
     return varType_EC
 
-def writeVarDecls(outputECFile, oldFuncName, assignInfo, listOfVarsToNotInclude):
+def writeVarDecls(outputECFile, oldFuncName, assignInfo, listOfVarsToNotInclude, constantsList):
     if (oldFuncName not in assignInfo):
         sys.exit("writeVarDecls in SDLtoECConvert.py:  oldFuncName not in assignInfo.")
 
@@ -229,6 +234,10 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo, listOfVarsToNotInclude)
             continue
 
         if (varName in listOfVarsToNotInclude):
+            continue
+
+        # constants don't need to be declared
+        if (varName in constantsList):
             continue
 
         #for some reason, SDLParser says variables of type "bool" are actually of type "int".
@@ -245,14 +254,14 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo, listOfVarsToNotInclude)
     if (len(outputString) > 0):
         outputECFile.write(outputString)
 
-def writeBodyOfFunc(outputECFile, oldFuncName, astNodes, config, assignStmtsToNotInclude):
+def writeBodyOfFunc(outputECFile, oldFuncName, astNodes, config, assignStmtsToNotInclude, constantsList):
     startLineNoOfFunc = getStartLineNoOfFunc(oldFuncName)
     endLineNoOfFunc = getEndLineNoOfFunc(oldFuncName)
 
     startLineNoOfBody = startLineNoOfFunc + 2
     endLineNoOfBody = endLineNoOfFunc - 1
 
-    writeAstNodesToFile(outputECFile, astNodes, startLineNoOfBody, endLineNoOfBody, config, assignStmtsToNotInclude)
+    writeAstNodesToFile(outputECFile, astNodes, startLineNoOfBody, endLineNoOfBody, config, assignStmtsToNotInclude, constantsList)
 
 def isAssignStmt(astNode):
     if (astNode.type == ops.EQ):
@@ -267,10 +276,16 @@ def makeSDLtoECVarNameReplacements(attrAsString, config):
         return secretKeyName_EC
     return attrAsString
 
-def getAssignStmtAsString(astNode, config):
+def getAssignStmtAsString(astNode, config, constantsList):
     if (astNode.type == ops.ATTR):
         attrAsString = str(astNode)
         #attrAsString = makeSDLtoECVarNameReplacements(attrAsString, config)
+        if (attrAsString in constantsList):
+            if (len(constantsList) == 1):
+                # if there's only one constant, that's our generator.  Make the replacement so that our
+                # variable name is replaced by the one EC generator constant.
+                return constantGeneratorVarName_EC
+            sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  there are multiple constants in the SDL input file.  We don't currently handle that right now.")
         return attrAsString
     elif (astNode.type == ops.TYPE):
         groupTypeAsString = str(astNode)
@@ -278,30 +293,30 @@ def getAssignStmtAsString(astNode, config):
             sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received node of type ops.TYPE, but it is not a valid type.")
         return groupTypeAsString
     elif (astNode.type == ops.EXP):
-        leftSide = getAssignStmtAsString(astNode.left, config)
-        rightSide = getAssignStmtAsString(astNode.right, config)
+        leftSide = getAssignStmtAsString(astNode.left, config, constantsList)
+        rightSide = getAssignStmtAsString(astNode.right, config, constantsList)
         return "(" + leftSide + " " + expOp_EC + " " + rightSide + ")"
     elif (astNode.type == ops.PAIR):
-        leftSide = getAssignStmtAsString(astNode.left, config)
-        rightSide = getAssignStmtAsString(astNode.right, config)
+        leftSide = getAssignStmtAsString(astNode.left, config, constantsList)
+        rightSide = getAssignStmtAsString(astNode.right, config, constantsList)
         return "e(" + leftSide + ", " + rightSide + ")"
     elif (astNode.type == ops.EQ):
-        leftSide = getAssignStmtAsString(astNode.left, config)
-        rightSide = getAssignStmtAsString(astNode.right, config)
+        leftSide = getAssignStmtAsString(astNode.left, config, constantsList)
+        rightSide = getAssignStmtAsString(astNode.right, config, constantsList)
         return leftSide + " " + assignmentOperator_EC + " " + rightSide
     elif (astNode.type == ops.EQ_TST):
-        leftSide = getAssignStmtAsString(astNode.left, config)
-        rightSide = getAssignStmtAsString(astNode.right, config)
+        leftSide = getAssignStmtAsString(astNode.left, config, constantsList)
+        rightSide = getAssignStmtAsString(astNode.right, config, constantsList)
         return "(" + leftSide + " " + eqTstOperator_EC + " " + rightSide + ")"
     elif (astNode.type == ops.HASH):
-        leftSide = getAssignStmtAsString(astNode.left, config)
-        rightSide = getAssignStmtAsString(astNode.right, config)
+        leftSide = getAssignStmtAsString(astNode.left, config, constantsList)
+        rightSide = getAssignStmtAsString(astNode.right, config, constantsList)
         if (rightSide not in validHashGroupTypes):
             sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received invalid type for hash call.")
         #return hashFuncName_EC + "(" + leftSide + ", " + rightSide + ")"
         return hashFuncName_EC + "(" + leftSide + ")"
     elif (astNode.type == ops.RANDOM):
-        randomGroupType = getAssignStmtAsString(astNode.left, config)
+        randomGroupType = getAssignStmtAsString(astNode.left, config, constantsList)
         if (randomGroupType not in validRandomGroupTypes):
             sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received invalid type for random call.")
         if ( (randomGroupType == str(types.G1)) or (randomGroupType == str(types.G2)) ):
@@ -325,11 +340,11 @@ def isIfStmtStart(astNode):
 
     return False
 
-def getIfStmtDecl(astNode, config):
+def getIfStmtDecl(astNode, config, constantsList):
     outputString = ""
 
     outputString += "if("
-    outputString += getAssignStmtAsString(astNode.left, config)
+    outputString += getAssignStmtAsString(astNode.left, config, constantsList)
     outputString += ") {"
 
     return outputString
@@ -362,37 +377,40 @@ def getElseStmtStart(astNode, config):
         outputString += "else {"
     else:
         outputString += "else if ("
-        outputString += getAssignStmtAsString(astNode.left, config)
+        outputString += getAssignStmtAsString(astNode.left, config, constantsList)
         outputString += ") {"
 
     return outputString
 
-def isAssignStmtToNotInclude(astNode, config, assignStmtsToNotInclude):
+def isAssignStmtToNotInclude(astNode, config, assignStmtsToNotInclude, constantsList):
     if (isAssignStmt(astNode) == False):
         return False
 
-    varNameToBeAssigned = getAssignStmtAsString(astNode.left, config)
+    varNameToBeAssigned = getAssignStmtAsString(astNode.left, config, constantsList)
 
     if (varNameToBeAssigned in assignStmtsToNotInclude):
         return True
 
     return False
 
-def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config, assignStmtsToNotInclude):
+def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config, assignStmtsToNotInclude, constantsList):
     outputString = ""
     currentNumSpaces = (numSpacesForIndent * 2)
 
     for lineNo in range(startLineNo, (endLineNo + 1)):
         currentAstNode = astNodes[(lineNo - 1)]
-        if (isAssignStmtToNotInclude(currentAstNode, config, assignStmtsToNotInclude) == True):
+        if (isAssignStmtToNotInclude(currentAstNode, config, assignStmtsToNotInclude, constantsList) == True):
             continue
         elif (isAssignStmt(currentAstNode) == True):
+            # constants don't get assignment statements
+            if (str(currentAstNode.left) in constantsList):
+                continue
             outputString += writeNumOfSpacesToString(currentNumSpaces)
-            outputString += getAssignStmtAsString(currentAstNode, config)
+            outputString += getAssignStmtAsString(currentAstNode, config, constantsList)
             outputString += endOfLineOperator_EC
         elif (isIfStmtStart(currentAstNode) == True):
             outputString += writeNumOfSpacesToString(currentNumSpaces)
-            outputString += getIfStmtDecl(currentAstNode, config)
+            outputString += getIfStmtDecl(currentAstNode, config, constantsList)
             currentNumSpaces += numSpacesForIndent
         elif (isIfStmtEnd(currentAstNode) == True):
             currentNumSpaces -= numSpacesForIndent
@@ -470,21 +488,21 @@ def addBoolRetVarForVerifyFunc(outputECFile):
 
     outputECFile.write(outputString)
 
-def convertSignFunc(outputECFile, config, assignInfo, astNodes):
-    writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config, assignInfo)
-    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo, [])
+def convertSignFunc(outputECFile, config, assignInfo, astNodes, constantsList):
+    writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config, assignInfo, constantsList)
+    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo, [], constantsList)
     writeCountVarIncrement(outputECFile, signFuncName_EC)
-    writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes, config, [])
+    writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes, config, [], constantsList)
     writeMessageAdditionToQueriedList(outputECFile)
     writeReturnValue(outputECFile, config.signFuncName_SDL, assignInfo)
     writeFuncEnd(outputECFile)
 
-def convertVerifyFunc(outputECFile, config, assignInfo, astNodes):
-    writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo)
-    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo, [])
+def convertVerifyFunc(outputECFile, config, assignInfo, astNodes, constantsList):
+    writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo, constantsList)
+    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo, [], constantsList)
     #addBoolRetVarForVerifyFunc(outputECFile)
     writeCountVarIncrement(outputECFile, verifyFuncName_EC)
-    writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config, [])
+    writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config, [], constantsList)
     writeReturnValue(outputECFile, config.verifyFuncName_SDL, assignInfo)
     writeFuncEnd(outputECFile)
 
@@ -541,30 +559,48 @@ def convertTypeSDLtoEC(outputType_SDL):
 
     sys.exit("convertTypeSDLtoEC in SDLtoECConvert.py:  outputType_SDL " + str(outputType_SDL) + " is not of a type we support; need to add more logic to support it.")
 
-def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config, assignInfo):
+def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config, assignInfo, constantsList):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += funcName_EC + " " + newFuncName + "("
-    outputString += getLineOfInputParams(oldFuncName, config, assignInfo)
+    outputString += getLineOfInputParams(oldFuncName, config, assignInfo, constantsList)
     outputString += ") : "
     outputString += getTypeOfOutputVar(oldFuncName, assignInfo)
     outputString += " " + assignmentOperator_EC + " " + funcStartChar_EC + "\n"
 
     outputECFile.write(outputString)
 
-def getLineOfInputParams(funcName, config, assignInfo):
+def getLineOfInputParams(funcName, config, assignInfo, constantsList):
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
+
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
     
     outputString = ""
 
     for varName in inputOutputVarsDict[inputKeyword]:
         if DEBUG : print("getLineOfInputParams:  variable name is ", str(varName))
 
+        # b/c our generators are constants, so no need to declare them here
+        if (varName in constantsList):
+            continue
+
+        # b/c public key variables are declared globally
+        if (varName in publicKeyVars):
+            continue
+
+        # b/c secret key variables are declared globally
+        if (varName in secretKeyVars):
+            continue
+
         outputString += getECVarNameAndTypeFromSDLName(varName, config, assignInfo, funcName)
         if (len(outputString) > 0):
             outputString += ", "
 
     lenOutputString = len(outputString)
+
+    if (lenOutputString < 2):
+        return outputString
 
     if (outputString[(lenOutputString - 2):lenOutputString] == ", "):
         outputString = outputString[0:(lenOutputString - len(", "))]
@@ -619,8 +655,8 @@ def addAdvAbstractDef(outputECFile, atLeastOneHashCall, assignInfo, config):
     outputString += funcEndChar_EC + "\n\n"
     outputECFile.write(outputString)
 
-def writeVerifyArgsDeclForMain(outputECFile, config, assignInfo):
-    (justInputVarsForVerifyFunc, listOfVarsToNotDeclare) = getJustInputVarsForFunc(assignInfo, config, config.verifyFuncName_SDL)
+def writeVerifyArgsDeclForMain(outputECFile, config, assignInfo, constantsList):
+    (justInputVarsForVerifyFunc, listOfVarsToNotDeclare) = getJustInputVarsForFunc(assignInfo, config, config.verifyFuncName_SDL, constantsList)
 
     outputString = ""
 
@@ -635,7 +671,7 @@ def writeVerifyArgsDeclForMain(outputECFile, config, assignInfo):
 
     outputECFile.write(outputString)
 
-def getJustInputVarsForFunc(assignInfo, config, funcName):
+def getJustInputVarsForFunc(assignInfo, config, funcName, constantsList):
     publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
     secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
@@ -648,6 +684,10 @@ def getJustInputVarsForFunc(assignInfo, config, funcName):
     for secretKeyVar in secretKeyVars:
         if (secretKeyVar not in listOfVarsToNotDeclare):
             listOfVarsToNotDeclare.append(secretKeyVar)
+
+    for constantVar in constantsList:
+        if (constantVar not in listOfVarsToNotDeclare):
+            listOfVarsToNotDeclare.append(constantVar)
 
     if (outputKeyword not in listOfVarsToNotDeclare):
         listOfVarsToNotDeclare.append(outputKeyword)
@@ -674,32 +714,51 @@ def getJustInputVarsForFunc(assignInfo, config, funcName):
 
     return (inputVarNamesList, listOfVarsToNotDeclare)
 
-def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall):
+def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall, constantsList):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += funcName_EC + " Main() : " + booleanType_EC + " " + assignmentOperator_EC + " "
     outputString += funcStartChar_EC + "\n"
     outputECFile.write(outputString)
 
-    writeVerifyArgsDeclForMain(outputECFile, config, assignInfo)
+    writeVerifyArgsDeclForMain(outputECFile, config, assignInfo, constantsList)
     writeExtraVarsNeededForMain(outputECFile, config, assignInfo)
     writeCallToInit(outputECFile)
     writeCallToAbstractAdversaryFunction(outputECFile, config)
-    writeCallToVerify(outputECFile, assignInfo, config)
+    writeCallToVerify(outputECFile, assignInfo, config, constantsList)
+    writeReturnStatementForMain(outputECFile, config)
+    writeEndOfMain(outputECFile)
 
-def writeCallToVerify(outputECFile, assignInfo, config):
+def writeEndOfMain(outputECFile):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent)
+    outputString += funcEndChar_EC + "\n" + funcEndChar_EC + gameEndChar_EC + "\n"
+
+    outputECFile.write(outputString)
+
+def writeReturnStatementForMain(outputECFile, config):
+    outputString = ""
+    outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
+    outputString += returnKeyword_EC + " " + vVarInMain_EC + " " + andOperator_EC + " " + notOperator_EC
+    outputString += memKeyword_EC + "(" + config.messageName_SDL + ", " + queriedName_EC + ")"
+    outputString += endOfLineOperator_EC + "\n"
+
+    outputECFile.write(outputString)
+
+def writeCallToVerify(outputECFile, assignInfo, config, constantsList):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += vVarInMain_EC + " " + assignmentOperator_EC + " " + verifyFuncName_EC + "("
-    (inputVarsList, listOfVarsToNotDeclare) = getJustInputVarsForFunc(assignInfo, config, config.verifyFuncName_SDL)
+    (inputVarsList, listOfVarsToNotDeclare) = getJustInputVarsForFunc(assignInfo, config, config.verifyFuncName_SDL, constantsList)
     for inputVar in inputVarsList:
-        outputString += inputVar + ", "
+        if (inputVar not in listOfVarsToNotDeclare):
+            outputString += inputVar + ", "
 
     lengthOfNewOutputString = len(outputString) - len(", ")
 
     outputString = outputString[0:lengthOfNewOutputString]
 
-#v = Verify(m, s, pk);
+    outputString += ")" + endOfLineOperator_EC + "\n"
 
     outputECFile.write(outputString)
 
@@ -748,7 +807,7 @@ def initializeCountVars(outputECFile, config, assignInfo):
 
     outputECFile.write(outputString)
 
-def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall):
+def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall, constantsList):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent)
     outputString += funcName_EC + " Init() : " + booleanType_EC + " = {\n"
@@ -757,7 +816,7 @@ def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
 
     initializeCountVars(outputECFile, config, assignInfo)
 
-    convertKeygenFunc(outputECFile, config, assignInfo, astNodes)
+    convertKeygenFunc(outputECFile, config, assignInfo, astNodes, constantsList)
 
     outputString = ""
 
@@ -777,7 +836,7 @@ def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
     outputString += funcEndChar_EC + "\n\n"
     outputECFile.write(outputString)
 
-def convertKeygenFunc(outputECFile, config, assignInfo, astNodes):
+def convertKeygenFunc(outputECFile, config, assignInfo, astNodes, constantsList):
     publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
     secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
@@ -794,8 +853,8 @@ def convertKeygenFunc(outputECFile, config, assignInfo, astNodes):
     if (outputKeyword not in listOfVarsToNotDeclare):
         listOfVarsToNotDeclare.append(outputKeyword)
 
-    writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, listOfVarsToNotDeclare)
-    writeBodyOfFunc(outputECFile, config.keygenFuncName_SDL, astNodes, config, [outputKeyword])
+    writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, listOfVarsToNotDeclare, constantsList)
+    writeBodyOfFunc(outputECFile, config.keygenFuncName_SDL, astNodes, config, [outputKeyword], constantsList)
 
 def getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config):
     if (config.signFuncName_SDL not in assignInfo):
@@ -935,17 +994,17 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
 
     outputECFile.write(outputString)
 
-def writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes):
+def writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes, constantsList):
     extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
 
     if (len(extraFuncsForAdversary) == 0):
         return
 
     for extraFunc in extraFuncsForAdversary:
-        writeFuncDecl(outputECFile, extraFunc, extraFunc, config, assignInfo)
-        writeVarDecls(outputECFile, extraFunc, assignInfo, [])
+        writeFuncDecl(outputECFile, extraFunc, extraFunc, config, assignInfo, constantsList)
+        writeVarDecls(outputECFile, extraFunc, assignInfo, [], constantsList)
         writeCountVarIncrement(outputECFile, extraFunc)
-        writeBodyOfFunc(outputECFile, extraFunc, astNodes, config, [])
+        writeBodyOfFunc(outputECFile, extraFunc, astNodes, config, [], constantsList)
         writeReturnValue(outputECFile, extraFunc, assignInfo)
         writeFuncEnd(outputECFile)
 
@@ -977,6 +1036,15 @@ def writeCountVarIncrement(outputECFile, funcName):
     outputString += countVarPrefix + funcName + " " + additionOperator_EC + " 1\n"
     outputECFile.write(outputString)
 
+def getConstantsList(assignInfo, config):
+    if (NONE_FUNC_NAME not in assignInfo):
+        return []
+
+    if (config.constantKeyword_SDL not in assignInfo[NONE_FUNC_NAME]):
+        return []
+
+    return assignInfo[NONE_FUNC_NAME][config.constantKeyword_SDL].getVarDeps()
+
 def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
 
@@ -997,6 +1065,8 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
 
     (assignInfo, astNodes) = getInputSDLFileMetadata(inputSDLFileName)
 
+    constantsList = getConstantsList(assignInfo, config)
+
     addTemplateLinesToOutputECFile(outputECFile)
 
     addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config)
@@ -1011,17 +1081,17 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     if (atLeastOneHashCall == True):
         addStatementsForPresenceOfHashes(outputECFile, assignInfo, config)
 
-    convertSignFunc(outputECFile, config, assignInfo, astNodes)
+    convertSignFunc(outputECFile, config, assignInfo, astNodes, constantsList)
 
-    writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes)
+    writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes, constantsList)
 
     addAdvAbstractDef(outputECFile, atLeastOneHashCall, assignInfo, config)
 
-    convertVerifyFunc(outputECFile, config, assignInfo, astNodes)
+    convertVerifyFunc(outputECFile, config, assignInfo, astNodes, constantsList)
 
-    writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall)
+    writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall, constantsList)
 
-    writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall)
+    writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall, constantsList)
 
     #convertKeygenFunc(outputECFile, config, assignInfo, astNodes)
 
