@@ -89,10 +89,10 @@ pop Rand_G_1 : () -> (G_1).
 (* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)
 axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_1 ^ y.
 
-adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; (message) -> G_1; (message, Z_R) -> G_1; (message, Z_R) -> G_1}.
+adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; (message) -> G_1; (message, int) -> G_1; (message, int) -> G_1}.
 
 game blsfull_EF = {
-  var sk : Z_R
+  var sk : int
   var pk : G_1
   var queried : message list
   var count_Hash : int
@@ -122,7 +122,7 @@ game blsfull_EF = {
     return output;
   }
 
-  fun testFunction(M : message, var2 : Z_R) : G_1 = {
+  fun testFunction(M : message, var2 : int) : G_1 = {
     var testVariable : G_1;
     var hh : G_1;
     var output : G_1;
@@ -133,7 +133,7 @@ game blsfull_EF = {
     return output;
   }
 
-  fun testFunction2(M : message, var3 : Z_R) : G_1 = {
+  fun testFunction2(M : message, var3 : int) : G_1 = {
     var testVariable3 : G_1;
     var hhh : G_1;
     var output : G_1;
@@ -167,9 +167,9 @@ game blsfull_EF = {
     count_Hash = 0;
     count_Sign = 0;
     count_Verify = 0;
-    var x : Z_R;
-    var var3 : Z_R;
-    var var2 : Z_R;
+    var x : int;
+    var var3 : int;
+    var var2 : int;
     x = Rand_G_1_exp();
     pk = (g_1 ^ x);
     sk = x;

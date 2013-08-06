@@ -174,7 +174,8 @@ def addGlobalVars(outputECFile, assignInfo, config):
     outputECFile.write(outputString)
 
 def addGlobalVarsForHashes(outputECFile):
-    outputString = "  var " + randomOracleVarName_EC + " : (message, G_1) map\n"
+    outputString = "  " + varKeyword_EC + " " + randomOracleVarName_EC + " : (" + messageType_EC
+    outputString += ", " + "G_1) map\n"
     outputECFile.write(outputString)
 
 def addHashFuncDef(outputECFile, assignInfo, config):
@@ -535,7 +536,8 @@ def convertTypeSDLtoEC_Strings(outputType_SDL):
     if (outputType_SDL == "GT"):
         return "G_T"
     if (outputType_SDL == "ZR"):
-        return "Z_R"
+        #return "Z_R"
+        return "int"
     if (outputType_SDL == "int"):
         return "int"
     if (outputType_SDL == "bool"):
@@ -551,7 +553,8 @@ def convertTypeSDLtoEC(outputType_SDL):
     if (outputType_SDL == types.GT):
         return "G_T"
     if (outputType_SDL == types.ZR):
-        return "Z_R"
+        #return "Z_R"
+        return "int"
     if (outputType_SDL == types.int):
         return "int"
     if (outputType_SDL == types.bool):
