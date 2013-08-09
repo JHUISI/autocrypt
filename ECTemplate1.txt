@@ -1,0 +1,9 @@
+prover alt-ergo, z3, cvc3.
+
+type G_1.
+type G_T.
+type message.
+
+cnst g_1_i : G_1.
+cnst g_T_i : G_T.
+

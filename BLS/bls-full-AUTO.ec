@@ -6,7 +6,9 @@ type message.
 
 cnst g_1_i : G_1.
 cnst g_T_i : G_T.
+
 cnst g_1 : G_1.
+cnst g_2 : G_1.
 cnst g_T : G_T.
 cnst q : int.
 cnst limit_Hash : int.
@@ -47,48 +49,6 @@ axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b)
 (* axiom non_degenerate : !(e(g_1, g_1) = g_T_i). *)
 
 axiom G_1_pow_add : 
- forall (x, y:int), g_1 ^ (x + y) = g_1 ^ x * g_1 ^ y.
-
-axiom G_T_pow_add : 
- forall (x, y:int), g_T ^ (x + y) = g_T ^ x * g_T ^ y.
-
-axiom G_1_pow_mult :
- forall (x, y:int),  (g_1 ^ x) ^ y = g_1 ^ (x * y).
-
-axiom G_T_pow_mult :
- forall (x, y:int),  (g_T ^ x) ^ y = g_T ^ (x * y).
-
-axiom G_1_log_pow : 
- forall (g_1':G_1), g_1 ^ G_1_log(g_1') = g_1'.
-
-axiom G_T_log_pow : 
- forall (g_T':G_T), g_T ^ G_T_log(g_T') = g_T'.
-
-axiom G_1_pow_mod : 
- forall (z:int), g_1 ^ (z%%q) = g_1 ^ z.
-
-axiom G_T_pow_mod : 
- forall (z:int), g_T ^ (z%%q) = g_T ^ z.
-
-axiom mod_add : 
- forall (x,y:int), (x%%q + y)%%q = (x + y)%%q.
-
-axiom mod_small : 
- forall (x:int), 0 <= x => x < q => x%%q = x.
-
-axiom mod_sub : 
- forall (x, y:int), (x%%q - y)%%q = (x - y)%%q. 
-
-axiom mod_bound : 
- forall (x:int), 0 <= x%%q && x%%q < q. 
-
-
-pop Rand_G_1_exp   : () -> (int).
-pop Rand_G_1 : () -> (G_1).
-
-(* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)
-axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_1 ^ y.
-
 adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; (message) -> G_1; (message, int) -> G_1; (message, int) -> G_1}.
 
 game blsfull_EF = {
@@ -122,12 +82,12 @@ game blsfull_EF = {
     return output;
   }
 
-  fun testFunction(M : message, var2 : int) : G_1 = {
+  fun testFunction(M : message) : G_1 = {
     var testVariable : G_1;
     var hh : G_1;
     var output : G_1;
     count_testFunction = count_testFunction + 1
-    hh = (Hash(M) ^ var2);
+    hh = (Hash(M) ^ g_1);
     testVariable = (hh ^ sk);
     output = testVariable;
     return output;
@@ -146,8 +106,9 @@ game blsfull_EF = {
 
   abs A = Adv{Hash, Sign, testFunction, testFunction2}
 
-  fun Verify(M : message, sig : G_1) : bool = {
+  fun Verify(M : message, sig : G_1, var3 : int) : bool = {
     var output : bool;
+    var var4 : int;
     var h : G_1;
     count_Verify = count_Verify + 1
     h = Hash(M);
@@ -158,6 +119,7 @@ game blsfull_EF = {
       output = False;
     }
     output = (e(h, pk) = e(sig, g_1));
+    var4 = (g_1 ^ var3);
     return output;
   }
 
@@ -169,11 +131,9 @@ game blsfull_EF = {
     count_Verify = 0;
     var x : int;
     var var3 : int;
-    var var2 : int;
     x = Rand_G_1_exp();
     pk = (g_1 ^ x);
     sk = x;
-    var2 = Rand_G_1_exp();
     var3 = Rand_G_1_exp();
     rand_oracle = empty_map;
     queried = [];
@@ -183,13 +143,14 @@ game blsfull_EF = {
   fun Main() : bool = {
     var M : message;
     var sig : G_1;
+    var var3 : int;
     var v : bool;
     var dummy : bool;
 
     dummy = Init();
     (M, sig) = A(pk);
 
-    v = Verify(M, sig);
+    v = Verify(M, sig, var3);
     return v && !mem(M, queried);
   }
 }.

@@ -43,7 +43,7 @@ output := sig
 END :: func:sign
 
 BEGIN :: func:verify
- input := list{pk, M, sig, g}
+ input := list{pk, M, sig, g, var2, var3}
  h := H(M, G1)
 BEGIN :: if
 if {e(h, pk) == e(sig, g)}
@@ -54,9 +54,10 @@ END :: if
 #test := (e(h, pk) == e(sig, g))
 # output := v
  output := (e(h, pk) == e(sig, g))
+ var4 := var2 ^ var3
 END :: func:verify
 
-constant := g
+constant := list{g, var2}
 public :=  pk
 signature :=  sig
 message :=  h

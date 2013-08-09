@@ -29,7 +29,8 @@ trueKeyword_EC = "true"
 trueKeyword_SDL = "True"
 falseKeyword_SDL = "False"
 numSpacesForIndent = 2
-templateFileName = "ECTemplate.txt"
+templateFileName = "ECTemplate"
+templateFileExt = ".txt"
 #configFileName = "SDLtoECConfig"
 booleanType_EC = "bool"
 varKeyword_EC = "var"
@@ -67,14 +68,33 @@ def writeNumOfSpacesToString(numSpaces):
 
     return outputString
 
-def addTemplateLinesToOutputECFile(outputECFile):
-    templateFile = open(templateFileName, 'r')
+def addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, constantCounter):
+    templateFile = open(templateFileName + str(constantCounter) + templateFileExt, 'r')
     outputString = ""
 
     for templateLine in templateFile:
         outputString += templateLine
 
     outputECFile.write(outputString)
+
+def addTemplateLinesToOutputECFile(outputECFile, assignInfo, constantsList):
+    addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, 1)
+
+    outputString = ""
+    constantVarNameToNewName = {}
+    constantCounter = 1
+
+    for constant in constantsList:
+        outputString += "cnst g_" + str(constantCounter) + " : G_1.\n"
+        constantCounter += 1
+        constantVarNameToNewName[constant] = "g_" + str(constantCounter)
+
+    outputECFile.write(outputString)
+
+    addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, 2)
+
+    outputString = ""
+    constantCounter = 1
 
 def removeChars(inputString, inputChars):
     inputStringSplit = inputString.split(inputChars)
@@ -286,6 +306,7 @@ def getAssignStmtAsString(astNode, config, constantsList):
                 # if there's only one constant, that's our generator.  Make the replacement so that our
                 # variable name is replaced by the one EC generator constant.
                 return constantGeneratorVarName_EC
+            return constantGeneratorVarName_EC
             sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  there are multiple constants in the SDL input file.  We don't currently handle that right now.")
         return attrAsString
     elif (astNode.type == ops.TYPE):
@@ -1070,7 +1091,7 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
 
     constantsList = getConstantsList(assignInfo, config)
 
-    addTemplateLinesToOutputECFile(outputECFile)
+    addTemplateLinesToOutputECFile(outputECFile, assignInfo, constantsList)
 
     addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config)
 
