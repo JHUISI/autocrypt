@@ -1,4 +1,4 @@
--- We can only handle signature schemes in which both the public key and the signature are one element.
+-- We can only handle signature schemes in which the signature is one element.
 
 -- The public key must be assigned a group element somewhere in the KeyGen function.
 
