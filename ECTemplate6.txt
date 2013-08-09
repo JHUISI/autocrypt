@@ -1,0 +1,20 @@
+axiom G_T_pow_mod : 
+ forall (z:int), g_T ^ (z%%q) = g_T ^ z.
+
+axiom mod_add : 
+ forall (x,y:int), (x%%q + y)%%q = (x + y)%%q.
+
+axiom mod_small : 
+ forall (x:int), 0 <= x => x < q => x%%q = x.
+
+axiom mod_sub : 
+ forall (x, y:int), (x%%q - y)%%q = (x - y)%%q. 
+
+axiom mod_bound : 
+ forall (x:int), 0 <= x%%q && x%%q < q. 
+
+
+pop Rand_G_1_exp   : () -> (int).
+pop Rand_G_1 : () -> (G_1).
+
+(* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)

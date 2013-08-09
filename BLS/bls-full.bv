@@ -14,46 +14,52 @@ BEGIN :: func:keygen
 input := None
  g := random(G2)
  x := random(ZR)
- pk := g^x
- sk := x
+ pk1 := g^x
+ sk1 := x
  var2 := random(ZR)
  var3 := random(ZR)
+ pk := list{pk1, var3}
+ sk := list{sk1, var2}
 output := list{pk, sk, g, var2}
 END :: func:keygen
 
 BEGIN :: func:testFunction
 input := list{sk, M, var2}
+sk := expand{sk1, var2}
 hh := (H(M, G2)^var2)
-testVariable := (hh^sk)
+testVariable := (hh^sk1)
 output := testVariable
-END :: func:sign
+END :: func:testFunction
 
 BEGIN :: func:testFunction2
 input := list{sk, M, var3}
+sk := expand{sk1, var2}
 hhh := (H(M, G1)^var3)
-testVariable3 := (hhh^sk)
+testVariable3 := (hhh^sk1)
 output := testVariable3
 END :: func:testFunction2
 
 BEGIN :: func:sign
 input := list{sk, M}
-sig := (H(M, G1)^sk)
+sk := expand{sk1, var2}
+sig := (H(M, G1)^sk1)
 sig2 := (H(M, G1))
 output := sig
 END :: func:sign
 
 BEGIN :: func:verify
  input := list{pk, M, sig, g, var2, var3}
+ pk := expand{pk1, var3}
  h := H(M, G1)
 BEGIN :: if
-if {e(h, pk) == e(sig, g)}
+if {e(h, pk1) == e(sig, g)}
 output := True
 else
 output := False
 END :: if
-#test := (e(h, pk) == e(sig, g))
+#test := (e(h, pk1) == e(sig, g))
 # output := v
- output := (e(h, pk) == e(sig, g))
+ output := (e(h, pk1) == e(sig, g))
  var4 := var2 ^ var3
 END :: func:verify
 
@@ -75,4 +81,4 @@ BEGIN :: precompute
 END :: precompute
 
 # individual verification check
-verify := {e(h, pk) == e(sig, g)}
+verify := {e(h, pk1) == e(sig, g)}

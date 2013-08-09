@@ -1,0 +1,3 @@
+axiom G_T_pow_mult :
+ forall (x, y:int),  (g_T ^ x) ^ y = g_T ^ (x * y).
+

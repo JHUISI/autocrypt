@@ -37,4 +37,3 @@ axiom G_T_exp_S : forall (x : G_T, k : int), k > 0 => x ^ k = x * (x^(k-1)).
 axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).
 (* axiom non_degenerate : !(e(g_1, g_1) = g_T_i). *)
 
-

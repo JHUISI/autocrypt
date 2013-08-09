@@ -48,12 +48,69 @@ axiom G_T_exp_S : forall (x : G_T, k : int), k > 0 => x ^ k = x * (x^(k-1)).
 axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).
 (* axiom non_degenerate : !(e(g_1, g_1) = g_T_i). *)
 
-axiom G_1_pow_add : 
-adversary Adv (adv_public_key : G_1) : (message * G_1) {message -> G_1; (message) -> G_1; (message, int) -> G_1; (message, int) -> G_1}.
+axiom G_1_pow_add_1 :
+ forall (x, y:int), g_1 ^ (x + y) = g_1 ^ x * g_1 ^ y.
+
+axiom G_1_pow_add_2 :
+ forall (x, y:int), g_2 ^ (x + y) = g_2 ^ x * g_2 ^ y.
+
+axiom G_T_pow_add : 
+ forall (x, y:int), g_T ^ (x + y) = g_T ^ x * g_T ^ y.
+
+axiom G_1_pow_mult_1 :
+ forall (x, y:int),  (g_1 ^ x) ^ y = g_1 ^ (x * y).
+
+axiom G_1_pow_mult_2 :
+ forall (x, y:int),  (g_2 ^ x) ^ y = g_2 ^ (x * y).
+
+axiom G_T_pow_mult :
+ forall (x, y:int),  (g_T ^ x) ^ y = g_T ^ (x * y).
+
+axiom G_1_log_pow_1 :
+ forall (g_1':G_1), g_1 ^ G_1_log(g_1') = g_1'.
+
+axiom G_1_log_pow_2 :
+ forall (g_2':G_1), g_2 ^ G_1_log(g_2') = g_2'.
+
+axiom G_T_log_pow : 
+ forall (g_T':G_T), g_T ^ G_T_log(g_T') = g_T'.
+
+axiom G_1_pow_mod_1 :
+ forall (z:int), g_1 ^ (z%%q) = g_1 ^ z.
+
+axiom G_1_pow_mod_2 :
+ forall (z:int), g_2 ^ (z%%q) = g_2 ^ z.
+
+axiom G_T_pow_mod : 
+ forall (z:int), g_T ^ (z%%q) = g_T ^ z.
+
+axiom mod_add : 
+ forall (x,y:int), (x%%q + y)%%q = (x + y)%%q.
+
+axiom mod_small : 
+ forall (x:int), 0 <= x => x < q => x%%q = x.
+
+axiom mod_sub : 
+ forall (x, y:int), (x%%q - y)%%q = (x - y)%%q. 
+
+axiom mod_bound : 
+ forall (x:int), 0 <= x%%q && x%%q < q. 
+
+
+pop Rand_G_1_exp   : () -> (int).
+pop Rand_G_1 : () -> (G_1).
+
+(* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)
+axiom Rand_G_1_def_1() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_1 ^ y.
+
+axiom Rand_G_1_def_2() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_2 ^ y.
+
+adversary Adv (adv_public_key : (G_1, int) ) : (message * G_1) {message -> G_1; (message) -> G_1; (message, int) -> G_1; (message, int) -> G_1}.
 
 game blsfull_EF = {
-  var sk : int
-  var pk : G_1
+  var sk1 : int
+  var pk1 : G_1
+  var var3 : int
   var queried : message list
   var count_Hash : int
   var count_testFunction : int
@@ -73,9 +130,8 @@ game blsfull_EF = {
   fun Sign(M : message) : G_1 = {
     var sig2 : G_1;
     var sig : G_1;
-    var output : G_1;
     count_Sign = count_Sign + 1
-    sig = (Hash(M) ^ sk);
+    sig = (Hash(M) ^ sk1);
     sig2 = Hash(M);
     output = sig;
     queried = m :: queried;
@@ -83,43 +139,40 @@ game blsfull_EF = {
   }
 
   fun testFunction(M : message) : G_1 = {
-    var testVariable : G_1;
     var hh : G_1;
-    var output : G_1;
+    var testVariable : G_1;
     count_testFunction = count_testFunction + 1
-    hh = (Hash(M) ^ g_1);
-    testVariable = (hh ^ sk);
+    hh = (Hash(M) ^ g_2);
+    testVariable = (hh ^ sk1);
     output = testVariable;
     return output;
   }
 
-  fun testFunction2(M : message, var3 : int) : G_1 = {
+  fun testFunction2(M : message) : G_1 = {
     var testVariable3 : G_1;
     var hhh : G_1;
-    var output : G_1;
     count_testFunction2 = count_testFunction2 + 1
     hhh = (Hash(M) ^ var3);
-    testVariable3 = (hhh ^ sk);
+    testVariable3 = (hhh ^ sk1);
     output = testVariable3;
     return output;
   }
 
   abs A = Adv{Hash, Sign, testFunction, testFunction2}
 
-  fun Verify(M : message, sig : G_1, var3 : int) : bool = {
-    var output : bool;
-    var var4 : int;
+  fun Verify(M : message, sig : G_1) : bool = {
     var h : G_1;
+    var var4 : int;
     count_Verify = count_Verify + 1
     h = Hash(M);
-    if((e(h, pk) = e(sig, g_1))) {
+    if((e(h, pk1) = e(sig, g_1))) {
       output = True;
     }
     else {
       output = False;
     }
-    output = (e(h, pk) = e(sig, g_1));
-    var4 = (g_1 ^ var3);
+    output = (e(h, pk1) = e(sig, g_1));
+    var4 = (g_2 ^ var3);
     return output;
   }
 
@@ -130,10 +183,9 @@ game blsfull_EF = {
     count_Sign = 0;
     count_Verify = 0;
     var x : int;
-    var var3 : int;
     x = Rand_G_1_exp();
-    pk = (g_1 ^ x);
-    sk = x;
+    pk1 = (g_1 ^ x);
+    sk1 = x;
     var3 = Rand_G_1_exp();
     rand_oracle = empty_map;
     queried = [];
@@ -143,14 +195,13 @@ game blsfull_EF = {
   fun Main() : bool = {
     var M : message;
     var sig : G_1;
-    var var3 : int;
     var v : bool;
     var dummy : bool;
 
     dummy = Init();
-    (M, sig) = A(pk);
+    (M, sig) = A(pk1, var3);
 
-    v = Verify(M, sig, var3);
+    v = Verify(M, sig);
     return v && !mem(M, queried);
   }
 }.

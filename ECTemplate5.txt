@@ -1,0 +1,3 @@
+axiom G_T_log_pow : 
+ forall (g_T':G_T), g_T ^ G_T_log(g_T') = g_T'.
+

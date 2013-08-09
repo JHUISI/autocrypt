@@ -2,6 +2,7 @@ import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
 
+constantVarNameToNewName = {}
 gameEndChar_EC = "."
 memKeyword_EC = "mem"
 notOperator_EC = "!"
@@ -78,16 +79,17 @@ def addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, constantCoun
     outputECFile.write(outputString)
 
 def addTemplateLinesToOutputECFile(outputECFile, assignInfo, constantsList):
+    global constantVarNameToNewName
+
     addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, 1)
 
     outputString = ""
-    constantVarNameToNewName = {}
     constantCounter = 1
 
     for constant in constantsList:
         outputString += "cnst g_" + str(constantCounter) + " : G_1.\n"
-        constantCounter += 1
         constantVarNameToNewName[constant] = "g_" + str(constantCounter)
+        constantCounter += 1
 
     outputECFile.write(outputString)
 
@@ -95,6 +97,67 @@ def addTemplateLinesToOutputECFile(outputECFile, assignInfo, constantsList):
 
     outputString = ""
     constantCounter = 1
+
+    for constant in constantsList:
+        outputString += "axiom G_1_pow_add_" + str(constantCounter) + " :\n"
+        outputString += " forall (x, y:int), g_" + str(constantCounter) + " ^ (x + y) = g_"
+        outputString += str(constantCounter) + " ^ x * g_" + str(constantCounter) + " ^ y.\n\n"
+        constantCounter += 1
+
+    outputECFile.write(outputString)
+
+    addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, 3)
+
+    outputString = ""
+    constantCounter = 1
+
+    for constant in constantsList:
+        outputString += "axiom G_1_pow_mult_" + str(constantCounter) + " :\n"
+        outputString += " forall (x, y:int),  (g_" + str(constantCounter) + " ^ x) ^ y = g_"
+        outputString += str(constantCounter) + " ^ (x * y).\n\n"
+        constantCounter += 1
+
+    outputECFile.write(outputString)
+
+    addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, 4)
+
+    outputString = ""
+    constantCounter = 1
+
+    for constant in constantsList:
+        outputString += "axiom G_1_log_pow_" + str(constantCounter) + " :\n"
+        outputString += " forall (g_" + str(constantCounter) + "':G_1), g_" + str(constantCounter)
+        outputString += " ^ G_1_log(g_" + str(constantCounter) + "') = g_" + str(constantCounter)
+        outputString += "'.\n\n"
+        constantCounter += 1
+
+    outputECFile.write(outputString)
+
+    addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, 5)
+
+    outputString = ""
+    constantCounter = 1
+
+    for constant in constantsList:
+        outputString += "axiom G_1_pow_mod_" + str(constantCounter) + " :\n"
+        outputString += " forall (z:int), g_" + str(constantCounter) + " ^ (z%%q) = g_"
+        outputString += str(constantCounter) + " ^ z.\n\n"
+        constantCounter += 1
+
+    outputECFile.write(outputString)
+
+    addTemplateLinesFromOneTemplateFileToOutputECFile(outputECFile, 6)
+
+    outputString = ""
+    constantCounter = 1
+
+    for constant in constantsList:
+        outputString += "axiom Rand_G_1_def_" + str(constantCounter)
+        outputString += "() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_"
+        outputString += str(constantCounter) + " ^ y.\n\n"
+        constantCounter += 1
+
+    outputECFile.write(outputString)
 
 def removeChars(inputString, inputChars):
     inputStringSplit = inputString.split(inputChars)
@@ -161,19 +224,23 @@ def getVarDeps(assignInfo, config, varName, funcName):
     # sk := x ^ y
     # would return sk
 
+    #NOTE:  I AM CONSIDERING CHANGING THIS!!!!!!!!!  DON'T PAY ATTENTION TO WHAT I WROTE ABOVE.
+
     if (funcName not in assignInfo):
         sys.exit("getVarDeps in SDLtoECConvert.py:  function name passed in isn't in assignInfo.")
 
     if (varName not in assignInfo[funcName]):
         sys.exit("getVarDeps in SDLtoECConvert.py:  variable name passed in isn't in the entry of assignInfo for the function name passed in.")
 
-    varDeps = assignInfo[funcName][varName].getListNodesList()
-    if (len(varDeps) == 0):
-        return [varName]
+    #varDeps = assignInfo[funcName][varName].getListNodesList()
+    #if (len(varDeps) == 0):
+        #return [varName]
 
-    return varDeps
+    #return varDeps
 
-def addGlobalVars(outputECFile, assignInfo, config):
+    return assignInfo[funcName][varName].getVarDeps()
+
+def addGlobalVars(outputECFile, assignInfo, config, constantsList):
     #outputString = "  " + varKeyword_EC + " " + secretKeyName_EC + " : int\n"
 
     outputString = ""
@@ -181,12 +248,18 @@ def addGlobalVars(outputECFile, assignInfo, config):
     secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
     for secretKeyVar in secretKeyVars:
+        # constants are generators, so they don't get declared
+        if (secretKeyVar in constantsList):
+            continue
         currentVarType = getVarTypeFromVarName_EC(secretKeyVar, config.keygenFuncName_SDL)
         outputString += "  " + varKeyword_EC + " " + secretKeyVar + " : " + currentVarType + "\n"
 
     publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
     for publicKeyVar in publicKeyVars:
+        # constants are generators, so they don't get declared
+        if (publicKeyVar in constantsList):
+            continue
         currentVarType = getVarTypeFromVarName_EC(publicKeyVar, config.keygenFuncName_SDL)
         outputString += "  " + varKeyword_EC + " " + publicKeyVar + " : " + currentVarType + "\n"
 
@@ -244,17 +317,42 @@ def getVarTypeFromVarName_EC(varName, funcName):
     varType_EC = convertTypeSDLtoEC(varType_SDL)
     return varType_EC
 
-def writeVarDecls(outputECFile, oldFuncName, assignInfo, listOfVarsToNotInclude, constantsList):
+def writeVarDecls(outputECFile, oldFuncName, assignInfo, config, constantsList):
     if (oldFuncName not in assignInfo):
         sys.exit("writeVarDecls in SDLtoECConvert.py:  oldFuncName not in assignInfo.")
 
     outputString = ""
 
+    # public key variables and secret key variables are all declared globally, so don't declare them
+    # locally.
+
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+
+    listOfVarsToNotDeclare = []
+
+    for publicKeyVar in publicKeyVars:
+        if (publicKeyVar not in listOfVarsToNotDeclare):
+            listOfVarsToNotDeclare.append(publicKeyVar)
+
+    for secretKeyVar in secretKeyVars:
+        if (secretKeyVar not in listOfVarsToNotDeclare):
+            listOfVarsToNotDeclare.append(secretKeyVar)
+
+    if (outputKeyword not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(outputKeyword)
+
+    if (config.publicKeyName_SDL not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(config.publicKeyName_SDL)
+
+    if (config.secretKeyName_SDL not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(config.secretKeyName_SDL)
+
     for varName in assignInfo[oldFuncName]:
         if (varName == inputKeyword):
             continue
 
-        if (varName in listOfVarsToNotInclude):
+        if (varName in listOfVarsToNotDeclare):
             continue
 
         # constants don't need to be declared
@@ -302,12 +400,13 @@ def getAssignStmtAsString(astNode, config, constantsList):
         attrAsString = str(astNode)
         #attrAsString = makeSDLtoECVarNameReplacements(attrAsString, config)
         if (attrAsString in constantsList):
-            if (len(constantsList) == 1):
+            return constantVarNameToNewName[attrAsString]
+            #if (len(constantsList) == 1):
                 # if there's only one constant, that's our generator.  Make the replacement so that our
                 # variable name is replaced by the one EC generator constant.
-                return constantGeneratorVarName_EC
-            return constantGeneratorVarName_EC
-            sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  there are multiple constants in the SDL input file.  We don't currently handle that right now.")
+                #return constantGeneratorVarName_EC
+            #return constantGeneratorVarName_EC
+            #sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  there are multiple constants in the SDL input file.  We don't currently handle that right now.")
         return attrAsString
     elif (astNode.type == ops.TYPE):
         groupTypeAsString = str(astNode)
@@ -413,6 +512,12 @@ def isAssignStmtToNotInclude(astNode, config, assignStmtsToNotInclude, constants
     if (varNameToBeAssigned in assignStmtsToNotInclude):
         return True
 
+    if (astNode.right.type == ops.EXPAND):
+        return True
+
+    if (astNode.right.type == ops.LIST):
+        return True
+
     return False
 
 def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config, assignStmtsToNotInclude, constantsList):
@@ -512,7 +617,7 @@ def addBoolRetVarForVerifyFunc(outputECFile):
 
 def convertSignFunc(outputECFile, config, assignInfo, astNodes, constantsList):
     writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config, assignInfo, constantsList)
-    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo, [], constantsList)
+    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo, config, constantsList)
     writeCountVarIncrement(outputECFile, signFuncName_EC)
     writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes, config, [], constantsList)
     writeMessageAdditionToQueriedList(outputECFile)
@@ -521,7 +626,7 @@ def convertSignFunc(outputECFile, config, assignInfo, astNodes, constantsList):
 
 def convertVerifyFunc(outputECFile, config, assignInfo, astNodes, constantsList):
     writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo, constantsList)
-    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo, [], constantsList)
+    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo, config, constantsList)
     #addBoolRetVarForVerifyFunc(outputECFile)
     writeCountVarIncrement(outputECFile, verifyFuncName_EC)
     writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config, [], constantsList)
@@ -581,6 +686,10 @@ def convertTypeSDLtoEC(outputType_SDL):
     if (outputType_SDL == types.bool):
         return booleanType_EC
 
+    #this must be removed
+    if (outputType_SDL == types.list):
+        return "LISTLIST"
+
     sys.exit("convertTypeSDLtoEC in SDLtoECConvert.py:  outputType_SDL " + str(outputType_SDL) + " is not of a type we support; need to add more logic to support it.")
 
 def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config, assignInfo, constantsList):
@@ -613,8 +722,14 @@ def getLineOfInputParams(funcName, config, assignInfo, constantsList):
         if (varName in publicKeyVars):
             continue
 
+        if (varName == config.publicKeyName_SDL):
+            continue
+
         # b/c secret key variables are declared globally
         if (varName in secretKeyVars):
+            continue
+
+        if (varName == config.secretKeyName_SDL):
             continue
 
         outputString += getECVarNameAndTypeFromSDLName(varName, config, assignInfo, funcName)
@@ -705,9 +820,15 @@ def getJustInputVarsForFunc(assignInfo, config, funcName, constantsList):
         if (publicKeyVar not in listOfVarsToNotDeclare):
             listOfVarsToNotDeclare.append(publicKeyVar)
 
+    if (config.publicKeyName_SDL not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(config.publicKeyName_SDL)
+
     for secretKeyVar in secretKeyVars:
         if (secretKeyVar not in listOfVarsToNotDeclare):
             listOfVarsToNotDeclare.append(secretKeyVar)
+
+    if (config.secretKeyName_SDL not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(config.secretKeyName_SDL)
 
     for constantVar in constantsList:
         if (constantVar not in listOfVarsToNotDeclare):
@@ -748,7 +869,7 @@ def writeMainFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
     writeVerifyArgsDeclForMain(outputECFile, config, assignInfo, constantsList)
     writeExtraVarsNeededForMain(outputECFile, config, assignInfo)
     writeCallToInit(outputECFile)
-    writeCallToAbstractAdversaryFunction(outputECFile, config)
+    writeCallToAbstractAdversaryFunction(outputECFile, config, assignInfo)
     writeCallToVerify(outputECFile, assignInfo, config, constantsList)
     writeReturnStatementForMain(outputECFile, config)
     writeEndOfMain(outputECFile)
@@ -786,12 +907,24 @@ def writeCallToVerify(outputECFile, assignInfo, config, constantsList):
 
     outputECFile.write(outputString)
 
-def writeCallToAbstractAdversaryFunction(outputECFile, config):
+def writeCallToAbstractAdversaryFunction(outputECFile, config, assignInfo):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += "(" + config.messageName_SDL + ", " + config.signatureVarName_SDL + ") "
     outputString += assignmentOperator_EC
-    outputString += " " + adversaryIdentifier_EC + "(" + config.publicKeyName_SDL + ");\n\n"
+    #outputString += " " + adversaryIdentifier_EC + "(" + config.publicKeyName_SDL + ");\n\n"
+    outputString += " " + adversaryIdentifier_EC + "("
+
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+
+    for publicKeyVar in publicKeyVars:
+        outputString += publicKeyVar + ", "
+
+    lenOutputString = len(outputString)
+
+    outputString = outputString[0:(lenOutputString - len(", "))]
+    outputString += ");\n\n"
+
     #outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
 
     outputECFile.write(outputString)
@@ -861,6 +994,11 @@ def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
     outputECFile.write(outputString)
 
 def convertKeygenFunc(outputECFile, config, assignInfo, astNodes, constantsList):
+
+    '''
+    # public key variables and secret key variables are all declared globally, so don't declare them
+    # locally in the Keygen function.
+
     publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
     secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
@@ -877,7 +1015,14 @@ def convertKeygenFunc(outputECFile, config, assignInfo, astNodes, constantsList)
     if (outputKeyword not in listOfVarsToNotDeclare):
         listOfVarsToNotDeclare.append(outputKeyword)
 
-    writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, listOfVarsToNotDeclare, constantsList)
+    if (config.publicKeyName_SDL not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(config.publicKeyName_SDL)
+
+    if (config.secretKeyName_SDL not in listOfVarsToNotDeclare):
+        listOfVarsToNotDeclare.append(config.secretKeyName_SDL)
+    '''
+
+    writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, config, constantsList)
     writeBodyOfFunc(outputECFile, config.keygenFuncName_SDL, astNodes, config, [outputKeyword], constantsList)
 
 def getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config):
@@ -975,11 +1120,20 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
     extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
 
     outputString = ""
-    outputString += adversaryKeyword_EC + " " + adversaryVarName_EC + " (" + advPubKeyVarName_EC + " : "
+    outputString += adversaryKeyword_EC + " " + adversaryVarName_EC + " (" + advPubKeyVarName_EC + " : ("
 
-    pubKeyType = getVarTypeFromVarName_EC(config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    #pubKeyType = getVarTypeFromVarName_EC(config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
-    outputString += pubKeyType + ") : (" + messageType_EC + " * " + groupTypeOfSignatureVariable + ") {"
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+
+    for publicKeyVar in publicKeyVars:
+        currentPublicKeyVarType = getVarTypeFromVarName_EC(publicKeyVar, config.keygenFuncName_SDL)
+        outputString += currentPublicKeyVarType + ", "
+
+    lenOutputString = len(outputString)
+    outputString = outputString[0:(lenOutputString - len(", "))]
+
+    outputString += ") ) : (" + messageType_EC + " * " + groupTypeOfSignatureVariable + ") {"
     outputString += messageType_EC + " -> "
 
     hashGroupTypeOfSigFunc_SDL = getHashGroupTypeOfFunc(config.signFuncName_SDL, assignInfo, config)
@@ -1026,7 +1180,7 @@ def writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes, cons
 
     for extraFunc in extraFuncsForAdversary:
         writeFuncDecl(outputECFile, extraFunc, extraFunc, config, assignInfo, constantsList)
-        writeVarDecls(outputECFile, extraFunc, assignInfo, [], constantsList)
+        writeVarDecls(outputECFile, extraFunc, assignInfo, config, constantsList)
         writeCountVarIncrement(outputECFile, extraFunc)
         writeBodyOfFunc(outputECFile, extraFunc, astNodes, config, [], constantsList)
         writeReturnValue(outputECFile, extraFunc, assignInfo)
@@ -1096,7 +1250,7 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config)
 
     addGameDeclLine(inputSDLFileName, outputECFile)
-    addGlobalVars(outputECFile, assignInfo, config)
+    addGlobalVars(outputECFile, assignInfo, config, constantsList)
 
     atLeastOneHashCall = getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo)
 
