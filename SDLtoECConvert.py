@@ -28,6 +28,7 @@ randomZRGenerationStmt_EC = "Rand_G_1_exp()"
 funcName_EC = "fun"
 trueKeyword_EC = "true"
 trueKeyword_SDL = "True"
+falseKeyword_EC = "false"
 falseKeyword_SDL = "False"
 numSpacesForIndent = 2
 templateFileName = "ECTemplate"
@@ -153,7 +154,7 @@ def addTemplateLinesToOutputECFile(outputECFile, assignInfo, constantsList):
 
     for constant in constantsList:
         outputString += "axiom Rand_G_1_def_" + str(constantCounter)
-        outputString += "() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_"
+        outputString += "() : x = Rand_G_1() ~ y = Rand_G_1_exp() : " + trueKeyword_EC + " ==> x = g_"
         outputString += str(constantCounter) + " ^ y.\n\n"
         constantCounter += 1
 
@@ -317,7 +318,9 @@ def getVarTypeFromVarName_EC(varName, funcName):
     varType_EC = convertTypeSDLtoEC(varType_SDL)
     return varType_EC
 
-def writeVarDecls(outputECFile, oldFuncName, assignInfo, config, constantsList):
+def writeVarDecls(outputECFile, oldFuncName, assignInfo, config, constantsList, varsToNotDeclareInputParam):
+    #if DEBUG : print("writeVarDecls:  funcName is ", oldFuncName, " and varsToNotDeclare:  ", varsToNotDeclareInputParam)
+
     if (oldFuncName not in assignInfo):
         sys.exit("writeVarDecls in SDLtoECConvert.py:  oldFuncName not in assignInfo.")
 
@@ -339,14 +342,20 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo, config, constantsList):
         if (secretKeyVar not in listOfVarsToNotDeclare):
             listOfVarsToNotDeclare.append(secretKeyVar)
 
-    if (outputKeyword not in listOfVarsToNotDeclare):
-        listOfVarsToNotDeclare.append(outputKeyword)
+    for varToNotDeclareInputParam in varsToNotDeclareInputParam:
+        if (varToNotDeclareInputParam not in listOfVarsToNotDeclare):
+            listOfVarsToNotDeclare.append(varToNotDeclareInputParam)
+
+    #if (outputKeyword not in listOfVarsToNotDeclare):
+        #listOfVarsToNotDeclare.append(outputKeyword)
 
     if (config.publicKeyName_SDL not in listOfVarsToNotDeclare):
         listOfVarsToNotDeclare.append(config.publicKeyName_SDL)
 
     if (config.secretKeyName_SDL not in listOfVarsToNotDeclare):
         listOfVarsToNotDeclare.append(config.secretKeyName_SDL)
+
+    if DEBUG : print("writeVarDecls:  funcName is ", oldFuncName, " and varsToNotDeclare:  ", listOfVarsToNotDeclare)
 
     for varName in assignInfo[oldFuncName]:
         if (varName == inputKeyword):
@@ -407,6 +416,10 @@ def getAssignStmtAsString(astNode, config, constantsList):
                 #return constantGeneratorVarName_EC
             #return constantGeneratorVarName_EC
             #sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  there are multiple constants in the SDL input file.  We don't currently handle that right now.")
+        if (attrAsString == trueKeyword_SDL):
+            return trueKeyword_EC
+        if (attrAsString == falseKeyword_SDL):
+            return falseKeyword_EC
         return attrAsString
     elif (astNode.type == ops.TYPE):
         groupTypeAsString = str(astNode)
@@ -560,11 +573,11 @@ def writeAstNodesToFile(outputECFile, astNodes, startLineNo, endLineNo, config, 
 
     outputECFile.write(outputString)
 
-def writeMessageAdditionToQueriedList(outputECFile):
+def writeMessageAdditionToQueriedList(outputECFile, config):
     outputString = ""
     outputString += writeNumOfSpacesToString(numSpacesForIndent * 2)
     outputString += queriedName_EC + " " + assignmentOperator_EC + " "
-    outputString += messageName_EC + " " + appendOperator_EC + " "
+    outputString += config.messageName_SDL + " " + appendOperator_EC + " "
     outputString += queriedName_EC + endOfLineOperator_EC + "\n"
 
     outputECFile.write(outputString)
@@ -617,16 +630,16 @@ def addBoolRetVarForVerifyFunc(outputECFile):
 
 def convertSignFunc(outputECFile, config, assignInfo, astNodes, constantsList):
     writeFuncDecl(outputECFile, config.signFuncName_SDL, signFuncName_EC, config, assignInfo, constantsList)
-    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo, config, constantsList)
+    writeVarDecls(outputECFile, config.signFuncName_SDL, assignInfo, config, constantsList, [])
     writeCountVarIncrement(outputECFile, signFuncName_EC)
     writeBodyOfFunc(outputECFile, config.signFuncName_SDL, astNodes, config, [], constantsList)
-    writeMessageAdditionToQueriedList(outputECFile)
+    writeMessageAdditionToQueriedList(outputECFile, config)
     writeReturnValue(outputECFile, config.signFuncName_SDL, assignInfo)
     writeFuncEnd(outputECFile)
 
 def convertVerifyFunc(outputECFile, config, assignInfo, astNodes, constantsList):
     writeFuncDecl(outputECFile, config.verifyFuncName_SDL, verifyFuncName_EC, config, assignInfo, constantsList)
-    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo, config, constantsList)
+    writeVarDecls(outputECFile, config.verifyFuncName_SDL, assignInfo, config, constantsList, [])
     #addBoolRetVarForVerifyFunc(outputECFile)
     writeCountVarIncrement(outputECFile, verifyFuncName_EC)
     writeBodyOfFunc(outputECFile, config.verifyFuncName_SDL, astNodes, config, [], constantsList)
@@ -681,7 +694,7 @@ def convertTypeSDLtoEC(outputType_SDL):
     if (outputType_SDL == types.ZR):
         #return "Z_R"
         return "int"
-    if (outputType_SDL == types.int):
+    if (outputType_SDL == types.Int):
         return "int"
     if (outputType_SDL == types.bool):
         return booleanType_EC
@@ -971,9 +984,13 @@ def writeInitFunc(outputECFile, config, assignInfo, astNodes, atLeastOneHashCall
 
     outputECFile.write(outputString)
 
+    writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, config, constantsList, [outputKeyword])
+
     initializeCountVars(outputECFile, config, assignInfo)
 
-    convertKeygenFunc(outputECFile, config, assignInfo, astNodes, constantsList)
+    writeBodyOfFunc(outputECFile, config.keygenFuncName_SDL, astNodes, config, [outputKeyword], constantsList)
+
+    #convertKeygenFunc(outputECFile, config, assignInfo, astNodes, constantsList)
 
     outputString = ""
 
@@ -1022,7 +1039,7 @@ def convertKeygenFunc(outputECFile, config, assignInfo, astNodes, constantsList)
         listOfVarsToNotDeclare.append(config.secretKeyName_SDL)
     '''
 
-    writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, config, constantsList)
+    writeVarDecls(outputECFile, config.keygenFuncName_SDL, assignInfo, config, constantsList, [])
     writeBodyOfFunc(outputECFile, config.keygenFuncName_SDL, astNodes, config, [outputKeyword], constantsList)
 
 def getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config):
@@ -1180,7 +1197,7 @@ def writeExtraFuncsForAdversary(outputECFile, assignInfo, config, astNodes, cons
 
     for extraFunc in extraFuncsForAdversary:
         writeFuncDecl(outputECFile, extraFunc, extraFunc, config, assignInfo, constantsList)
-        writeVarDecls(outputECFile, extraFunc, assignInfo, config, constantsList)
+        writeVarDecls(outputECFile, extraFunc, assignInfo, config, constantsList, [])
         writeCountVarIncrement(outputECFile, extraFunc)
         writeBodyOfFunc(outputECFile, extraFunc, astNodes, config, [], constantsList)
         writeReturnValue(outputECFile, extraFunc, assignInfo)
@@ -1211,7 +1228,7 @@ def writeCountVarIncrement(outputECFile, funcName):
     currentNumSpacesToUse = 4
     outputString += writeNumOfSpacesToString(currentNumSpacesToUse)
     outputString += countVarPrefix + funcName + " " + assignmentOperator_EC + " "
-    outputString += countVarPrefix + funcName + " " + additionOperator_EC + " 1\n"
+    outputString += countVarPrefix + funcName + " " + additionOperator_EC + " 1;\n"
     outputECFile.write(outputString)
 
 def getConstantsList(assignInfo, config):

@@ -6,7 +6,7 @@ setting := asymmetric
 # types for variables used in verification.
 # all other variable types are inferred by SDL parser
 BEGIN :: types
- M := str
+ M := Str
 END :: types
 
 # description of key generation and signing algorithms
@@ -16,7 +16,7 @@ input := None
  x := random(ZR)
  pk1 := g^x
  sk1 := x
- var2 := random(ZR)
+ var2 := random(G1)
  var3 := random(ZR)
  pk := list{pk1, var3}
  sk := list{sk1, var2}
@@ -24,9 +24,9 @@ output := list{pk, sk, g, var2}
 END :: func:keygen
 
 BEGIN :: func:testFunction
-input := list{sk, M, var2}
+input := list{sk, M, var3}
 sk := expand{sk1, var2}
-hh := (H(M, G2)^var2)
+hh := (H(M, G2)^var3)
 testVariable := (hh^sk1)
 output := testVariable
 END :: func:testFunction
