@@ -9,6 +9,26 @@ BEGIN :: types
  M := Str
 END :: types
 
+BEGIN :: func:testFunction5
+input := None
+var13 := random(ZR)
+output := var13
+END :: func:testFunction5
+
+BEGIN :: func:testFunction4
+input := None
+var8 := random(ZR)
+var12 := testFunction5(None)
+output := var8
+END :: func:testFunction4
+
+BEGIN :: func:testFunction3
+input := None
+var6 := random(ZR)
+var7 := testFunction4(None)
+output := var6
+END :: func:testFunction3
+
 # description of key generation and signing algorithms
 BEGIN :: func:keygen
 input := None
@@ -18,6 +38,7 @@ input := None
  sk1 := x
  var2 := random(G1)
  var3 := random(ZR)
+ var5 := testFunction3(None)
  pk := list{pk1, var3}
  sk := list{sk1, var2}
 output := list{pk, sk, g, var2}
@@ -36,6 +57,8 @@ input := list{sk, M, var3}
 sk := expand{sk1, var2}
 hhh := (H(M, G1)^var3)
 testVariable3 := (hhh^sk1)
+var10 := testFunction3(None)
+#var9 := testFunction4(None)
 output := testVariable3
 END :: func:testFunction2
 

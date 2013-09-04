@@ -420,6 +420,9 @@ def getAssignStmtAsString(astNode, config, constantsList):
             return trueKeyword_EC
         if (attrAsString == falseKeyword_SDL):
             return falseKeyword_EC
+        #print(attrAsString)
+        #if (attrAsString == NONE_STRING):
+            #return ""
         return attrAsString
     elif (astNode.type == ops.TYPE):
         groupTypeAsString = str(astNode)
@@ -459,6 +462,22 @@ def getAssignStmtAsString(astNode, config, constantsList):
             return randomZRGenerationStmt_EC
         else:
             sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  error in system logic for random calls.")
+    elif (astNode.type == ops.FUNC):
+        funcReturnString = ""
+        userFuncName = getFullVarName(astNode, True)
+        funcReturnString += userFuncName + "("
+        funcListNodes = getListNodeNames(astNode)
+        atLeastOneFuncListNode = False
+        for funcListNode in funcListNodes:
+            if (funcListNode == NONE_STRING):
+                continue
+            funcReturnString += funcListNode + ", "
+            atLeastOneFuncListNode = True
+        if (atLeastOneFuncListNode == True):
+            lenFuncReturnString = len(funcReturnString)
+            funcReturnString = funcReturnString[0:(lenFuncReturnString - len(", "))]
+        funcReturnString += ")"
+        return funcReturnString
     else:
         sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  could not handle this type (" + str(astNode.type) + ") of node (" + str(astNode) + ").  Need to add more logic to support it.")
 
@@ -1059,7 +1078,83 @@ def getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config):
 
     return getVarTypeFromVarName_EC(outputVariable, config.signFuncName_SDL)
 
+#def getSubFuncsThatEachFuncCallsRecursive(assignInfo, funcName, config, retDict):
+    #if (funcName not in assignInfo):
+        #sys.exit("getSubFuncsThatEachFuncCallsRecursive in SDLtoECConvert.py:  function name passed in is not in assignInfo structure passed in.")
+
+def getFuncCallsInThisAssignNodeRecursive(currentAssignNode, retList):
+    if (currentAssignNode == None):
+        return
+
+    if (currentAssignNode.type == ops.FUNC):
+        userFuncName = getFullVarName(currentAssignNode, True)
+        if (userFuncName not in retList):
+            retList.append(userFuncName)
+
+    if (currentAssignNode.left != None):
+        getFuncCallsInThisAssignNodeRecursive(currentAssignNode.left, retList)
+    if (currentAssignNode.right != None):
+        getFuncCallsInThisAssignNodeRecursive(currentAssignNode.right, retList)
+
+def getFuncCallsInThisAssignNode(currentAssignNode):
+    retList = []
+
+    getFuncCallsInThisAssignNodeRecursive(currentAssignNode, retList)
+
+    return retList
+
+def parseAssignInfoForFuncCallsInOneFunc(assignInfo, funcName, config):
+    if (funcName not in assignInfo):
+        sys.exit("parseAssignInfoForFuncCallsInOneFunc in SDLtoECConvert.py:  function name passed in is not in assignInfo structure passed in.")
+
+    retList = []
+
+    for varName in assignInfo[funcName]:
+        varInfoObj = assignInfo[funcName][varName]
+        currentAssignNode = varInfoObj.getAssignNode()
+        funcCallsInThisAssignNode = getFuncCallsInThisAssignNode(currentAssignNode)
+        for currentFuncCall in funcCallsInThisAssignNode:
+            if (currentFuncCall not in retList):
+                retList.append(currentFuncCall)
+
+    return retList
+
+def getSubFuncsThatEachFuncCalls(assignInfo, config):
+    retDict = {}
+
+    for funcName in assignInfo:
+        retDict[funcName] = parseAssignInfoForFuncCallsInOneFunc(assignInfo, funcName, config)
+        #getSubFuncsThatEachFuncCallsRecursive(assignInfo, funcName, config, retDict)
+
+    return retDict
+
+def convertSubFuncsStructIntoFullyRecursiveChainRecursive(subFuncsStruct, funcName, retListForThisFunc, funcsAlreadyCovered):
+    for funcThatIsCalled in subFuncsStruct[funcName]:
+        if (funcThatIsCalled not in retListForThisFunc):
+            retListForThisFunc.append(funcThatIsCalled)
+
+        if (funcThatIsCalled not in funcsAlreadyCovered):
+            convertSubFuncsStructIntoFullyRecursiveChainRecursive(subFuncsStruct, funcThatIsCalled, retListForThisFunc, funcsAlreadyCovered)
+            funcsAlreadyCovered.append(funcThatIsCalled)
+
+def convertSubFuncsStructIntoFullyRecursiveChain(subFuncsStruct):
+    retDict = {}
+
+    for funcName in subFuncsStruct:
+        retListForThisFunc = []
+        convertSubFuncsStructIntoFullyRecursiveChainRecursive(subFuncsStruct, funcName, retListForThisFunc, [])
+        retDict[funcName] = retListForThisFunc
+
+    return retDict
+
 def getExtraFuncsForAdversary(assignInfo, config):
+    subFuncsThatEachFuncCalls = getSubFuncsThatEachFuncCalls(assignInfo, config)
+
+    subFuncsInFullyRecursiveChain = convertSubFuncsStructIntoFullyRecursiveChain(subFuncsThatEachFuncCalls)
+    print(subFuncsInFullyRecursiveChain)
+
+    STARTHEREDDDDDDDD
+
     retList = []
 
     for keyName in assignInfo:
@@ -1106,7 +1201,7 @@ def getHashGroupTypeOfFunc(funcName, assignInfo, config):
 
     return hashesGroupTypesInFunc[0]
 
-def getInputVarsForFunc(outputECFile, assignInfo, config, funcName):
+def getInputVarsForFunc(outputECFile, assignInfo, config, funcName, constantsList):
     if (funcName not in assignInfo):
         sys.exit("getInputVarsForFunc in SDLtoECConvert.py:  function name passed in is not in assignInfo parameter passed in.")
 
@@ -1114,7 +1209,25 @@ def getInputVarsForFunc(outputECFile, assignInfo, config, funcName):
 
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
 
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+    
     for varName in inputOutputVarsDict[inputKeyword]:
+        # b/c our generators are constants, so no need to declare them here
+        if (varName in constantsList):
+            continue
+
+        # b/c public key variables are declared globally
+        if (varName in publicKeyVars):
+            continue
+
+        if (varName == config.publicKeyName_SDL):
+            continue
+
+        # b/c secret key variables are declared globally
+        if (varName in secretKeyVars):
+            continue
+
         #in EC, secret key is global, so no need to declare it here
         if (varName == config.secretKeyName_SDL):
             continue
@@ -1131,7 +1244,7 @@ def getInputVarsForFunc(outputECFile, assignInfo, config, funcName):
 
     return outputString
 
-def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
+def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config, constantsList):
     groupTypeOfSignatureVariable = getGroupTypeOfSignatureVariable(outputECFile, assignInfo, config)
 
     extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
@@ -1162,7 +1275,7 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
     outputString = ""
 
     # write input vars for sign function
-    outputString += getInputVarsForFunc(outputECFile, assignInfo, config, config.signFuncName_SDL)
+    outputString += getInputVarsForFunc(outputECFile, assignInfo, config, config.signFuncName_SDL, constantsList)
 
     outputString += ") -> "
 
@@ -1180,7 +1293,7 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config):
 
     for extraFunc in extraFuncsForAdversary:
         outputString += "; ("
-        outputString += getInputVarsForFunc(outputECFile, assignInfo, config, extraFunc)
+        outputString += getInputVarsForFunc(outputECFile, assignInfo, config, extraFunc, constantsList)
         outputString += ") -> "
         outputTypeOfFunc = getTypeOfOutputVar(extraFunc, assignInfo)
         outputString += outputTypeOfFunc
@@ -1264,7 +1377,7 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
 
     addTemplateLinesToOutputECFile(outputECFile, assignInfo, constantsList)
 
-    addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config)
+    addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config, constantsList)
 
     addGameDeclLine(inputSDLFileName, outputECFile)
     addGlobalVars(outputECFile, assignInfo, config, constantsList)
