@@ -1171,9 +1171,15 @@ def getExtraFuncsForAdversary(assignInfo, config):
     #print(funcsThatSignFuncCalls)
 
     # get rid of any functions that are called by functions other than sign
-    for currentFuncName in subFuncsInFullyRecursiveChain:
-        if (currentFuncName == config.signFuncName_SDL):
-            continue
+    #for currentFuncName in subFuncsInFullyRecursiveChain:
+
+    # this part I'm not crazy about.  Basically, we're saying keygen, verify, and sign are the main
+    # functions of any signature scheme.  Nothing else (not even a setup function).  So we only
+    # allow the adversary to have access to functions that are keygen, verify, or any function that either
+    # of them calls.  If only sign calls it, the adversary doesn't get access to it.
+    for currentFuncName in [config.keygenFuncName_SDL, config.verifyFuncName_SDL]:
+        #if (currentFuncName == config.signFuncName_SDL):
+            #continue
 
         # the following for loops assumes no duplicates in subFuncsInFullyRecursiveChain, which in its
         # current form guarantees
@@ -1190,7 +1196,7 @@ def getExtraFuncsForAdversary(assignInfo, config):
             if (keyName not in retList):
                 retList.append(keyName)
 
-    print(retList)
+    #print(retList)
 
     return retList
 
@@ -1279,21 +1285,27 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config, constan
 
     extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
 
+    #(adv_public_key_1 : G_1, adv_public_key _2 : int)
+
     outputString = ""
-    outputString += adversaryKeyword_EC + " " + adversaryVarName_EC + " (" + advPubKeyVarName_EC + " : ("
+    outputString += adversaryKeyword_EC + " " + adversaryVarName_EC + " (" # + advPubKeyVarName_EC + " : ("
 
     #pubKeyType = getVarTypeFromVarName_EC(config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
     publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
+    counterForAdvPubKeyDecls = 1
+
     for publicKeyVar in publicKeyVars:
+        outputString += advPubKeyVarName_EC + "_" + str(counterForAdvPubKeyDecls) + " : "
         currentPublicKeyVarType = getVarTypeFromVarName_EC(publicKeyVar, config.keygenFuncName_SDL)
         outputString += currentPublicKeyVarType + ", "
+        counterForAdvPubKeyDecls += 1
 
     lenOutputString = len(outputString)
     outputString = outputString[0:(lenOutputString - len(", "))]
 
-    outputString += ") ) : (" + messageType_EC + " * " + groupTypeOfSignatureVariable + ") {"
+    outputString += ") : (" + messageType_EC + " * " + groupTypeOfSignatureVariable + ") {"
     outputString += messageType_EC + " -> "
 
     hashGroupTypeOfSigFunc_SDL = getHashGroupTypeOfFunc(config.signFuncName_SDL, assignInfo, config)

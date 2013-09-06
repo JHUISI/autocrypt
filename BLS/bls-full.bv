@@ -38,7 +38,7 @@ input := None
  sk1 := x
  var2 := random(G1)
  var3 := random(ZR)
-# var5 := testFunction3(None)
+ var5 := testFunction3(None)
  pk := list{pk1, var3}
  sk := list{sk1, var2}
 output := list{pk, sk, g, var2}
@@ -88,6 +88,7 @@ END :: if
 END :: func:verify
 
 constant := list{g, var2}
+generator := list{g, var2}
 public :=  pk
 signature :=  sig
 message :=  h
