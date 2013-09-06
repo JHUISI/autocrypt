@@ -1,3 +1,4 @@
+import copy
 import sdlpath
 from sdlparser.SDLParser import *
 import re, importlib
@@ -1148,19 +1149,48 @@ def convertSubFuncsStructIntoFullyRecursiveChain(subFuncsStruct):
     return retDict
 
 def getExtraFuncsForAdversary(assignInfo, config):
+    # the adversary gets access to all functions except for those that are only called from the sign
+    # function.  So first determine which functions each function calls, then determine which functions
+    # are only called by sign
+
+    # determine which functions each function calls
     subFuncsThatEachFuncCalls = getSubFuncsThatEachFuncCalls(assignInfo, config)
 
+    # now convert it into a fully recursive chain (i.e., unroll each function call into all function calls
+    # that that function makes)
     subFuncsInFullyRecursiveChain = convertSubFuncsStructIntoFullyRecursiveChain(subFuncsThatEachFuncCalls)
-    print(subFuncsInFullyRecursiveChain)
+    #print(subFuncsInFullyRecursiveChain)
 
-    STARTHEREDDDDDDDD
+    #STARTHEREDDDDDDDD
+
+    if (config.signFuncName_SDL not in subFuncsInFullyRecursiveChain):
+        sys.exit("getExtraFuncsForAdversary in SDLtoECConvert.py:  sign function name specified in config file isn't in list of sub-functions in fully recursive chain.")
+
+    funcsThatSignFuncCalls = copy.deepcopy(subFuncsInFullyRecursiveChain[config.signFuncName_SDL])
+
+    #print(funcsThatSignFuncCalls)
+
+    # get rid of any functions that are called by functions other than sign
+    for currentFuncName in subFuncsInFullyRecursiveChain:
+        if (currentFuncName == config.signFuncName_SDL):
+            continue
+
+        # the following for loops assumes no duplicates in subFuncsInFullyRecursiveChain, which in its
+        # current form guarantees
+        for subFuncThatIsCalled in subFuncsInFullyRecursiveChain[currentFuncName]:
+            if (subFuncThatIsCalled in funcsThatSignFuncCalls):
+                funcsThatSignFuncCalls.remove(subFuncThatIsCalled)
 
     retList = []
 
+    # don't include any functions that are only called by sign
+    # funcsThatSignFuncCalls now only stores functions that are called by sign exclusively
     for keyName in assignInfo:
-        if ( (keyName not in funcNamesAdvDoesntNeed) and (keyName != config.keygenFuncName_SDL) and (keyName != config.signFuncName_SDL) and (keyName != config.verifyFuncName_SDL) ):
+        if ( (keyName not in funcsThatSignFuncCalls) and (keyName not in funcNamesAdvDoesntNeed) and (keyName != config.keygenFuncName_SDL) and (keyName != config.signFuncName_SDL) and (keyName != config.verifyFuncName_SDL) ):
             if (keyName not in retList):
                 retList.append(keyName)
+
+    print(retList)
 
     return retList
 

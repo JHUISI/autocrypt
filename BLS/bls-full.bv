@@ -38,7 +38,7 @@ input := None
  sk1 := x
  var2 := random(G1)
  var3 := random(ZR)
- var5 := testFunction3(None)
+# var5 := testFunction3(None)
  pk := list{pk1, var3}
  sk := list{sk1, var2}
 output := list{pk, sk, g, var2}
@@ -57,8 +57,8 @@ input := list{sk, M, var3}
 sk := expand{sk1, var2}
 hhh := (H(M, G1)^var3)
 testVariable3 := (hhh^sk1)
-var10 := testFunction3(None)
-#var9 := testFunction4(None)
+# var10 := testFunction3(None)
+# var9 := testFunction4(None)
 output := testVariable3
 END :: func:testFunction2
 
@@ -67,6 +67,7 @@ input := list{sk, M}
 sk := expand{sk1, var2}
 sig := (H(M, G1)^sk1)
 sig2 := (H(M, G1))
+var27 := testFunction3(None)
 output := sig
 END :: func:sign
 
@@ -80,7 +81,7 @@ output := True
 else
 output := False
 END :: if
-#test := (e(h, pk1) == e(sig, g))
+# test := (e(h, pk1) == e(sig, g))
 # output := v
  output := (e(h, pk1) == e(sig, g))
  var4 := var2 ^ var3
