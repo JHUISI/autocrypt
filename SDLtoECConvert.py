@@ -164,9 +164,80 @@ def addTemplateLinesToOutputECFile_SymmetricOrAsymmetric(outputECFile, assignInf
     outputString += "*)\n\n"
     outputString += "op [%%] : (int,int) -> int as int_mod.\n\n"
 
+    if (pairingSetting == symmetricPairingSettingKeyword_SDL):
+        outputString += "axiom q_1_pos : 0 < q_1.\n\n"
+    else:
+        outputString += "axiom q_1_pos : 0 < q_1.\n"
+        outputString += "axiom q_2_pos : 0 < q_2.\n\n"
+
+    if (pairingSetting == symmetricPairingSettingKeyword_SDL):
+        outputString += "(* Axioms largely pulled from ElGamal.  Note that G_1 and G_T have the same order if the order is prime. *)\n\n"
+    else:
+        outputString += "(* Axioms largely pulled from ElGamal.  Note that G_1, G_2, and G_T have the same order if the order is prime. *)\n\n"
+
+    outputString += "axiom G_1_mult_1 : forall (x : G_1), x * g_1_i = x.\n"
+    outputString += "axiom G_1_exp_0 : forall (x : G_1), x ^ 0 = g_1_i.\n"
+    outputString += "axiom G_1_exp_S : forall (x : G_1, k : int), k > 0 => x ^ k = x * (x^(k-1)).\n\n"
+
+    if (pairingSetting == asymmetricPairingSettingKeyword_SDL):
+        outputString += "axiom G_2_mult_1 : forall (x : G_2), x * g_2_i = x.\n"
+        outputString += "axiom G_2_exp_0 : forall (x : G_2), x ^ 0 = g_2_i.\n"
+        outputString += "axiom G_2_exp_S : forall (x : G_2, k : int), k > 0 => x ^ k = x * (x^(k-1)).\n\n"
+
+    outputString += "axiom G_T_mult_1 : forall (x : G_T), x * g_T_i = x.\n"
+    outputString += "axiom G_T_exp_0 : forall (x : G_T), x ^ 0 = g_T_i.\n"
+    outputString += "axiom G_T_exp_S : forall (x : G_T, k : int), k > 0 => x ^ k = x * (x^(k-1)).\n\n"
+
+    if (pairingSetting == symmetricPairingSettingKeyword_SDL):
+        outputString += "axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).\n"
+        outputString += "(* axiom non_degenerate : !(e(g_1, g_1) = g_T_i). *)\n\n"
+    else:
+        outputString += "axiom bilinearity : forall (x : G_1, y : G_2, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).\n"
+        outputString += "(* axiom non_degenerate : !(e(g_1, g_2) = g_T_i). *)\n\n"
+
+    generatorCounter = 1
+
+    for generator in generatorsList:
+        outputString += "axiom "
+        typeForThisGenerator = getVarTypeFromVarName_EC(generator, config.keygenFuncName_SDL, pairingSetting)
+        outputString += typeForThisGenerator + "_pow_add_" + str(generatorCounter) + " :\n"
+        outputString += " forall (x, y:int), g_" + str(generatorCounter) + " ^ (x + y) = g_"
+        outputString += str(generatorCounter) + " ^ x * g_" + str(generatorCounter) + " ^ y.\n\n"
+        generatorCounter += 1
+
+    outputString += "axiom G_T_pow_add :\n"
+    outputString += " forall (x, y:int), g_T ^ (x + y) = g_T ^ x * g_T ^ y.\n\n"
+
+    generatorCounter = 1
+
+    for generator in generatorsList:
+        outputString += "axiom "
+        typeForThisGenerator = getVarTypeFromVarName_EC(generator, config.keygenFuncName_SDL, pairingSetting)
+        outputString += typeForThisGenerator + "_pow_mult_" + str(generatorCounter) + " :\n"
+        outputString += " forall (x, y:int),  (g_" + str(generatorCounter) + " ^ x) ^ y = g_"
+        outputString += str(generatorCounter) + " ^ (x * y).\n\n"
+        generatorCounter += 1
+
+    outputString += "axiom G_T_pow_mult :\n"
+    outputString += " forall (x, y:int),  (g_T ^ x) ^ y = g_T ^ (x * y).\n\n"
+
+    generatorCounter = 1
+
+    for generator in generatorsList:
+        outputString += "axiom " 
+        typeForThisGenerator = getVarTypeFromVarName_EC(generator, config.keygenFuncName_SDL, pairingSetting)
+        outputString += typeForThisGenerator + "_log_pow_" + str(generatorCounter) + " :\n"
+        outputString += " forall (g_" + str(generatorCounter) + "': " + typeForThisGenerator + "), g_"
+        outputString += str(generatorCounter) + " ^ " + typeForThisGenerator + "_log(g_"
+        outputString += str(generatorCounter) + "') = g_" + str(generatorCounter) + "'.\n\n"
+        generatorCounter += 1
+
+    outputString += "axiom G_T_log_pow :\n"
+    outputString += " forall (g_T':G_T), g_T ^ G_T_log(g_T') = g_T'.\n\n"
+
     outputECFile.write(outputString)
 
-
+    #ENDSHERE
 
 # the following function is defunct and is not used.  Ignore it.
 def addTemplateLinesToOutputECFile(outputECFile, assignInfo, generatorsList, pairingSetting):

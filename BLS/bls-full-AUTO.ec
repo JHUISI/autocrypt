@@ -32,6 +32,48 @@ op e : (G_1, G_1) -> G_T as G_1_pair.
 
 op [%%] : (int,int) -> int as int_mod.
 
+axiom q_1_pos : 0 < q_1.
+
+(* Axioms largely pulled from ElGamal.  Note that G_1 and G_T have the same order if the order is prime. *)
+
+axiom G_1_mult_1 : forall (x : G_1), x * g_1_i = x.
+axiom G_1_exp_0 : forall (x : G_1), x ^ 0 = g_1_i.
+axiom G_1_exp_S : forall (x : G_1, k : int), k > 0 => x ^ k = x * (x^(k-1)).
+
+axiom G_T_mult_1 : forall (x : G_T), x * g_T_i = x.
+axiom G_T_exp_0 : forall (x : G_T), x ^ 0 = g_T_i.
+axiom G_T_exp_S : forall (x : G_T, k : int), k > 0 => x ^ k = x * (x^(k-1)).
+
+axiom bilinearity : forall (x : G_1, y : G_1, a : int, b : int), e(x ^ a, y ^ b) = e(x, y) ^ (a * b).
+(* axiom non_degenerate : !(e(g_1, g_1) = g_T_i). *)
+
+axiom G_1_pow_add_1 :
+ forall (x, y:int), g_1 ^ (x + y) = g_1 ^ x * g_1 ^ y.
+
+axiom G_1_pow_add_2 :
+ forall (x, y:int), g_2 ^ (x + y) = g_2 ^ x * g_2 ^ y.
+
+axiom G_T_pow_add :
+ forall (x, y:int), g_T ^ (x + y) = g_T ^ x * g_T ^ y.
+
+axiom G_1_pow_mult_1 :
+ forall (x, y:int),  (g_1 ^ x) ^ y = g_1 ^ (x * y).
+
+axiom G_1_pow_mult_2 :
+ forall (x, y:int),  (g_2 ^ x) ^ y = g_2 ^ (x * y).
+
+axiom G_T_pow_mult :
+ forall (x, y:int),  (g_T ^ x) ^ y = g_T ^ (x * y).
+
+axiom G_1_log_pow_1 :
+ forall (g_1': G_1), g_1 ^ G_1_log(g_1') = g_1'.
+
+axiom G_1_log_pow_2 :
+ forall (g_2': G_1), g_2 ^ G_1_log(g_2') = g_2'.
+
+axiom G_T_log_pow :
+ forall (g_T':G_T), g_T ^ G_T_log(g_T') = g_T'.
+
 adversary Adv (adv_public_key_1 : G_1, adv_public_key_2 : int) : (message * G_1) {message -> G_1; (message) -> G_1; (message) -> G_1; () -> int; (message) -> G_1; () -> int; () -> int}.
 
 game blsfullSYMM_EF = {
