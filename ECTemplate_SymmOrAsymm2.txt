@@ -1,0 +1,4 @@
+type G_T.
+type message.
+
+cnst g_1_i : G_1.
