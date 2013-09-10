@@ -27,7 +27,8 @@ emptyMapSymbol_EC = "[]"
 emptyMapName_EC = "empty_map"
 randomOracleVarName_EC = "rand_oracle"
 randomG1GenerationStmt_EC = "Rand_G_1()"
-randomZRGenerationStmt_EC = "Rand_G_1_exp()"
+randomG2GenerationStmt_EC = "Rand_G_2()"
+randomZRGenerationStmt_EC = "Rand_exp()"
 funcName_EC = "fun"
 trueKeyword_EC = "true"
 trueKeyword_SDL = "True"
@@ -130,6 +131,10 @@ def addTemplateLinesToOutputECFile_SymmetricOrAsymmetric(outputECFile, assignInf
     if (pairingSetting == asymmetricPairingSettingKeyword_SDL):
         outputString += "cnst q_2 : int.\n"
 
+    outputString += "cnst q_T : int.\n\n"
+
+    outputString += "cnst q : int.\n\n"
+
     outputString += "cnst limit_Hash : int.\n\n"
     outputString += "op [*] : (G_1, G_1) -> G_1 as G_1_mul.\n"
 
@@ -165,10 +170,14 @@ def addTemplateLinesToOutputECFile_SymmetricOrAsymmetric(outputECFile, assignInf
     outputString += "op [%%] : (int,int) -> int as int_mod.\n\n"
 
     if (pairingSetting == symmetricPairingSettingKeyword_SDL):
-        outputString += "axiom q_1_pos : 0 < q_1.\n\n"
+        outputString += "axiom q_1_pos : 0 < q_1.\n"
     else:
         outputString += "axiom q_1_pos : 0 < q_1.\n"
-        outputString += "axiom q_2_pos : 0 < q_2.\n\n"
+        outputString += "axiom q_2_pos : 0 < q_2.\n"
+
+    outputString += "axiom q_T_pos : 0 < q_T.\n\n"
+
+    outputString += "axiom q_pos : 0 < q.\n\n"
 
     if (pairingSetting == symmetricPairingSettingKeyword_SDL):
         outputString += "(* Axioms largely pulled from ElGamal.  Note that G_1 and G_T have the same order if the order is prime. *)\n\n"
@@ -234,6 +243,85 @@ def addTemplateLinesToOutputECFile_SymmetricOrAsymmetric(outputECFile, assignInf
 
     outputString += "axiom G_T_log_pow :\n"
     outputString += " forall (g_T':G_T), g_T ^ G_T_log(g_T') = g_T'.\n\n"
+
+    generatorCounter = 1
+
+    for generator in generatorsList:
+        outputString += "axiom " 
+        typeForThisGenerator = getVarTypeFromVarName_EC(generator, config.keygenFuncName_SDL, pairingSetting)
+        outputString += typeForThisGenerator + "_pow_mod_" + str(generatorCounter) + " :\n"
+        if (typeForThisGenerator == "G_1"):
+            outputString += " forall (z:int), g_" + str(generatorCounter) + " ^ (z%%q_1) = g_"
+            outputString += str(generatorCounter) + " ^ z.\n\n"
+        elif (typeForThisGenerator == "G_2"):
+            outputString += " forall (z:int), g_" + str(generatorCounter) + " ^ (z%%q_2) = g_"
+            outputString += str(generatorCounter) + " ^ z.\n\n"
+        else:
+            sys.exit("addTemplateLinesToOutputECFile_SymmetricOrAsymmetric in SDLtoECConvert.py:  one of the generators is not of type G1 or G2.")
+        generatorCounter += 1
+
+    outputString += "axiom G_T_pow_mod :\n"
+    outputString += " forall (z:int), g_T ^ (z%%q_T) = g_T ^ z.\n\n"
+
+    outputString += "axiom mod_add :\n"
+    outputString += " forall (x,y:int), (x%%q + y)%%q = (x + y)%%q.\n\n"
+    outputString += "axiom mod_small :\n"
+    outputString += " forall (x:int), 0 <= x => x < q => x%%q = x.\n\n"
+    outputString += "axiom mod_sub :\n"
+    outputString += " forall (x, y:int), (x%%q - y)%%q = (x - y)%%q.\n\n"
+    outputString += "axiom mod_bound :\n"
+    outputString += " forall (x:int), 0 <= x%%q && x%%q < q.\n\n"
+
+    outputString += "pop Rand_exp : () -> (int).\n"
+    outputString += "pop Rand_G_1 : () -> (G_1).\n"
+
+    if (pairingSetting == asymmetricPairingSettingKeyword_SDL):
+        outputString += "pop Rand_G_2 : () -> (G_2).\n"
+
+    outputString += "\n"
+
+    outputString += "(* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)\n"
+
+    outputString += "axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_exp() : true ==> x = g_"
+
+    # this is questionable.  Not sure how best to do this.  Basically, we're just finding the first
+    # generator in the group we want, but I don't know if that is technically correct.
+
+    generatorCounter = 1
+    foundIt = False
+
+    for generator in generatorsList:
+        typeForThisGenerator = getVarTypeFromVarName_EC(generator, config.keygenFuncName_SDL, pairingSetting)
+        if (typeForThisGenerator == "G_1"):
+            foundIt = True
+            break
+        generatorCounter += 1
+
+    if (foundIt == False):
+        sys.exit("addTemplateLinesToOutputECFile_SymmetricOrAsymmetric in SDLtoECConvert.py:  could not locate a generator of type G1.")
+
+    outputString += str(generatorCounter) + " ^ y.\n\n"
+
+    if (pairingSetting == asymmetricPairingSettingKeyword_SDL):
+        outputString += "axiom Rand_G_2_def() : x = Rand_G_2() ~ y = Rand_exp() : true ==> x = g_"
+
+        # again, this is questionable.  Not sure how best to do this.  Basically, we're just finding the first
+        # generator in the group we want, but I don't know if that is technically correct.
+
+        generatorCounter = 1
+        foundIt = False
+
+        for generator in generatorsList:
+            typeForThisGenerator = getVarTypeFromVarName_EC(generator, config.keygenFuncName_SDL, pairingSetting)
+            if (typeForThisGenerator == "G_2"):
+                foundIt = True
+                break
+            generatorCounter += 1
+
+        if (foundIt == False):
+            sys.exit("addTemplateLinesToOutputECFile_SymmetricOrAsymmetric in SDLtoECConvert.py:  could not locate a generator of type G2, even though the pairing setting is asymmetric.")
+
+        outputString += str(generatorCounter) + " ^ y.\n\n"
 
     outputECFile.write(outputString)
 
