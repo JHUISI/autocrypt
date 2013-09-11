@@ -548,6 +548,39 @@ def getInputSDLFileMetadata(inputSDLFileName):
     astNodes = getAstNodes()
     return (assignInfo, astNodes)
 
+'''
+def getHashGroupTypesRecursive(currentAssignNode, retList):
+    if (currentAssignNode == None):
+        return
+
+    if (currentAssignNode.type == ops.HASH):
+        currentHashGroupType = str(currentAssignNode.right)
+        if (len(retList) == 0):
+            retList.append(currentHashGroupType)
+        else:
+            if (currentHashGroupType != retList[0]):
+                sys.exit("getHashGroupTypesRecursive in SDLtoECConvert.py:  found hash calls that hash to different group types.  Not currently supported.")
+
+    if (currentAssignNode.left != None):
+        getHashGroupTypesRecursive(currentAssignNode.left, retList)
+    if (currentAssignNode.right != None):
+        getHashGroupTypesRecursive(currentAssignNode.right, retList)
+
+def getHashGroupTypes(currentAssignNode):
+    retList = []
+
+    getHashGroupTypesRecursive(currentAssignNode, retList)
+
+    return retList
+
+def getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo):
+    for funcName in assignInfo:
+        for varName in assignInfo[funcName]:
+            varInfoObj = assignInfo[funcName][varName]
+            currentAssignNode = varInfoObj.getAssignNode()
+            hashGroupTypes = getHashGroupTypes(currentAssignNode)
+'''
+
 def getAtLeastOneHashCallOrNot_WithSDLParser(assignInfo):
     for funcName in assignInfo:
         for varName in assignInfo[funcName]:
@@ -705,8 +738,10 @@ def getAssignStmtAsString(astNode, config, generatorsList):
         randomGroupType = getAssignStmtAsString(astNode.left, config, generatorsList)
         if (randomGroupType not in validRandomGroupTypes):
             sys.exit("getAssignStmtAsString in SDLtoECConvert.py:  received invalid type for random call.")
-        if ( (randomGroupType == str(types.G1)) or (randomGroupType == str(types.G2)) ):
+        if (randomGroupType == str(types.G1)):
             return randomG1GenerationStmt_EC
+        elif (randomGroupType == str(types.G2)):
+            return randomG2GenerationStmt_EC
         elif (randomGroupType == str(types.ZR)):
             return randomZRGenerationStmt_EC
         else:
@@ -1670,6 +1705,9 @@ def getPairingSetting(assignInfo, config):
 
     return pairingSetting
 
+def getGroupTypeOfHashStatements(assignInfo, config):
+    ddddd
+
 def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
 
@@ -1706,6 +1744,7 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     addCountVars(outputECFile, assignInfo, config, atLeastOneHashCall)
 
     if (atLeastOneHashCall == True):
+        groupTypeOfHashStatements = getGroupTypeOfHashStatements(assignInfo, config)
         addStatementsForPresenceOfHashes(outputECFile, assignInfo, config, pairingSetting)
 
     convertSignFunc(outputECFile, config, assignInfo, astNodes, generatorsList, pairingSetting)

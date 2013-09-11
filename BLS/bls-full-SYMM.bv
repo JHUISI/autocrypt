@@ -33,6 +33,7 @@ END :: func:testFunction3
 BEGIN :: func:keygen
 input := None
  g := random(G2)
+ var333 := random(G2)
  x := random(ZR)
  pk1 := g^x
  sk1 := x
