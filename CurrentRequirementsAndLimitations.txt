@@ -12,3 +12,15 @@ variable hashing to G1 and another hashing to G2).
 -- For any function that is passed to the adversary (which is all functions except keygen, setup, and 
 verify), the output must be one variable name, nothing else.  This is b/c we have to automatically infer
 the type of the output of each function, so we need some variable to analyze.
+
+-- All calculations must be one calculation per line.  For example, you cannot have the following:
+
+x := H(M, G1) ^ y
+
+It needs to be converted to the following:
+
+x := H(M, G1)
+z := x ^ y
+
+Future work is to detect when a violation of this occurs, and future future work is to correct the 
+problem automatically.

@@ -1,0 +1,44 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\fs24 \cf0 change SDL to include a "generator" keyword \
+change compiler code to declare generator statements for variables listed in SDL "generator" keyword\
+change SDL to be in symmetric setting\
+change compiler code to detect if in symmetric setting or asymmetric setting.  For symmetric, G1 and GT.  For asymmetric, G1, G2, GT.  Define axioms accordingly.  Determine which setting from "setting" keyword in SDL.\
+need q_i for each group i in use (const)\
+make the pop's for each group (pop Rand_G_. . . . )\
+\
+adv_public_key : (G_1, int) )  change to\
+(adv_public_key_1 : G_1, adv_public_key _2 : int)\
+\
+include keygen, verify in functions adversary has access to\
+\
+functions that are only called by sign (or callers of those) should be blacklisted from adversary (i.e., adversary shouldn't be given access to them). Do recursive traversal to find these functions.  Include all other functions.\
+\
+make EasyCrypt model SDL w.r.t. choosing random integers\
+\
+counts don't have semicolons\
+\
+init:  variables have to be declared before statements\
+\
+doesn't like Hash(M) ^ sk1; \
+wants it to be 2 separate statements\
+\
+output doesn't get declared in sign\
+\
+queried = m :: queried;  => m needs to correspond with message input, which is M\
+\
+output isn't declared for testFunction\
+\
+output not declared for testFunction2\
+\
+true and false are lowercase\
+\
+adversary definition line:  parameters come from SDL instead of what you converted for EasyCrypt.  For example, testFunction1(M, someInt) in SDL, but that becomes testFunction1(M) in EasyCrypt b/c someInt is global.  So use EasyCrypt ones instead\
+\
+var4 has wrong type (should be G1, I think, not an int)\
+\
+check Ryan's latest email w.r.t. random exponent, then do that conversion (email was sent out on Thursday, 8/22/2013)}

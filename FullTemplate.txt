@@ -1,0 +1,3 @@
+axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_1 ^ y.
+
+
