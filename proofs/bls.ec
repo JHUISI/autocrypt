@@ -83,11 +83,11 @@ axiom mod_bound :
  forall (x:int), 0 <= x%%q && x%%q < q. 
 
 
-pop Rand_G_1_exp   : () -> (int).
+pop Rand_exp   : () -> (int).
 pop Rand_G_1 : () -> (G_1).
 
 (* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)
-axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_G_1_exp() : true ==> x = g_1 ^ y.
+axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_exp() : true ==> x = g_1 ^ y.
 
 adversary Adv (adv_public_key : G_1) : (message * G_1) {(message) -> G_1; message -> G_1}.
 
@@ -132,7 +132,7 @@ game BLS_EF = {
     count_Hash = 0;
     count_Sign = 0;
     count_Verify = 0;
-    secret_key = Rand_G_1_exp();
+    secret_key = Rand_exp();
     rand_oracle = empty_map;
     queried = [];
     return true;
@@ -167,7 +167,7 @@ var given_1 : G_1 (* analogous to the public key *)
     count_Hash = 0;
     count_Sign = 0;
     count_Verify = 0;
-    secret_key = Rand_G_1_exp();
+    secret_key = Rand_exp();
     rand_oracle = empty_map;
     queried = [];
     hashes = empty_map;
@@ -181,7 +181,7 @@ var given_1 : G_1 (* analogous to the public key *)
 
     count_Hash = count_Hash + 1;
     if(!in_dom(m, hashes)) {
-      exp=Rand_G_1_exp();
+      exp=Rand_exp();
 
       hashes[m]=g_1^exp;      
       sigs[m]=given_1^exp;
@@ -371,9 +371,11 @@ game G_Choose_One = G_Inv_Sign
   var n_inject : int
   var m_inject : message
   var m_adv : message
+  var enum : (message, int) map
   var given_2 : G_1
 
   where Init = {
+    enum = empty_map;
     count_Hash = 0;
     rand_oracle = empty_map;
     queried = [];
@@ -388,11 +390,12 @@ game G_Choose_One = G_Inv_Sign
     count_Hash = count_Hash + 1;
 
     if(!in_dom(m, hashes)) {
+      enum[m] = count_Hash;
       if(count_Hash = n_inject) {
         m_inject = m;
         (* hashes[m] = given_2 *)
       } (* else { *)
-        exp=Rand_G_1_exp();
+        exp=Rand_exp();
         hashes[m]=g_1^exp;      
         sigs[m]=given_1^exp;
       (* } *)
@@ -408,8 +411,8 @@ game G_Choose_One = G_Inv_Sign
     var b : int;
 
     dummy=Init();
-    secret_key = Rand_G_1_exp();
-    b = Rand_G_1_exp();
+    secret_key = Rand_exp();
+    b = Rand_exp();
     given_1 = g_1^secret_key;
     given_2 = g_1^b;
 
@@ -433,6 +436,7 @@ wp.
 rnd.
 trivial.
 if.
+swap{2} 5.
 if{2}.
 wp.
 trivial.
@@ -494,6 +498,118 @@ rnd{2}.
 trivial.
 save.
 
+game G_Violate = G_Choose_One
+  where Hash = {
+    var exp : int;
+    count_Hash = count_Hash + 1;
+
+    if(!in_dom(m, hashes)) {
+      enum[m] = count_Hash;
+      if(count_Hash = n_inject) {
+        m_inject = m;
+        hashes[m] = given_2;
+      } else {
+        exp=Rand_exp();
+        hashes[m]=g_1^exp;      
+        sigs[m]=given_1^exp;
+      }
+    }
+    return hashes[m];
+  }
+
+  and Main = {
+    var pk : G_1;    
+    var s : G_1;
+    var v : bool;
+    var dummy : bool;
+    var b : int;
+    var secret : G_1;
+
+    dummy=Init();
+    secret_key = Rand_exp();
+    b = Rand_exp();
+    given_1 = g_1^secret_key;
+    given_2 = g_1^b;
+    secret = g_1^(secret_key*b);
+    
+    pk = given_1;
+
+    (m_adv, s) = A(pk);
+
+    return (s = secret);
+  }
+.
+
+(* step 1: prove that condition C implies that verify succeeds *)
+
+equiv E_G_Violate : G_Choose_One.Main ~ G_Violate.Main : true ==> ((count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}) && ((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && (((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2}) => ={res}).
+admit.
+save.
+
+
+(*
+claim C_neg1 : BLS_EF.Main[res && count_Hash<limit_Hash] <= BLS_EF.Main[res]
+same.
+
+claim C_0 : BLS_EF.Main[res] = G_Choose_One.Main[res]
+admit.
+
+claim C_1_5 : G_Choose_One.Main[res && count_Hash<limit_Hash && enum[m_adv]=n_inject] <= G_Choose_One.Main[res]
+same.
+*)
+
+claim C_0 : BLS_EF.Main[count_Hash<limit_Hash && res] = G_Choose_One.Main[count_Hash<limit_Hash && res]
+admit.
+
+claim C_1_5 : G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/(1+limit_Hash)%r <= G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]
+admit.
+
+claim C_1 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] = G_Violate.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]
+using E_G_Violate.
+
+claim C_2 : G_Violate.Main[count_Hash < limit_Hash && enum[m_adv]=n_inject && res] <= G_Violate.Main[res]
+same.
+
+claim C_1_7 : BLS_EF.Main[count_Hash<limit_Hash && res] * 1%r/(1+limit_Hash)%r <= G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]. 
+
+claim C_3 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] <= G_Violate.Main[res].
+
+claim C_4 : BLS_EF.Main[count_Hash<limit_Hash && res] * 1%r/(1+limit_Hash)%r <= G_Violate.Main[res].
+
+
+
+            
+
+
+
+(res && count_Hash < limit_Hash && enum[m_adv]=n_inject){1} = (res && !mem(m_adv, queried) && count_Hash < limit_Hash && enum[m_adv]=n_inject){2}.
+
+
+equiv E_G_Violate : G_Choose_One.Main ~ G_Violate.Main : true ==> (res && count_Hash < limit_Hash && enum[m_adv]=n_inject){1} = (res && !mem(m_adv, queried) && count_Hash < limit_Hash && enum[m_adv]=n_inject){2}.
+app 7 8 ((s=hashes[m_adv]^secret_key && count_Hash < limit_Hash && enum[m_adv]=n_inject && in_dom(m_adv, hashes)){1} = (s=hashes[m_adv]^secret_key && count_Hash < limit_Hash && enum[m_adv]=n_inject && in_dom(m_adv, hashes)){2}) && (count_Hash>n_inject){2}.
+admit.
+
+
+inline.
+condf{1}.
+wp.
+trivial.
+
+
+ifsync{1} 7.
+
+(* need to create cases for the conditions of our postcondition *)
+
+
+
+(* need to add something about whether we chose the right thing to hijack *)
+
+
+
+HERE
+
+
+
 claim C_Basic : G_Choose_One.Main[res] = G_Inv_Sign.Main[res]
 using E_G_Choose_One.
 
@@ -501,7 +617,22 @@ using E_G_Choose_One.
 claim C_Hash_Lim : G_Choose_One.Main[res && count_Hash < limit_Hash] = G_Inv_Sign.Main[res && count_Hash < limit_Hash]
 using E_G_Choose_One.
 
-equiv E_G_Choose_One_Prob : G_Choose_One.Main ~ G_Choose_One.Main : true ==> (enum[adv_m] > 0 && enum[adv_m] < count_Hash)
+claim Test1 : G_Inv_Sign.Main[res && count_Hash < limit_Hash] <= G_Inv_Sign.Main[res]
+same.
+
+claim Test2 : G_Choose_One.Main[res && count_Hash < limit_Hash] <= G_Inv_Sign.Main[res].
+
+equiv E_G_Choose_One_Prob : G_Choose_One.Main ~ G_Choose_One.Main : true ==> (enum[m_adv] > 0 && enum[m_adv] < count_Hash){1}.
+admit.
+
+claim C_test5 : G_Choose_One.Main[enum[m_adv] > 0 && enum[m_adv] < count_Hash] = 1%r
+using E_G_Choose_One_Prob.
+
+claim C_Hash_Lim2 : G_Choose_One.Main[res && count_Hash<limit_Hash && n_inject=enum[m_adv]] >= (1%r)/((limit_Hash+5)%r) * G_Inv_Sign.Main[res && count_Hash < limit_Hash]
+using E_G_Choose_One_Prob.
+
+claim C_Hash_Lim2 : G_Choose_One.Main[res && count_Hash<limit_Hash && m_inject=m_adv] >= (1%r)/(limit_Hash%r) * G_Inv_Sign.Main[res && count_Hash < limit_Hash]
+compute.
 
 note that adv_m in_dom thing (because verify calls hash and verify gets called)
 
@@ -515,8 +646,7 @@ we may need to rework hash count a little to so that it doesn't count repeated q
 
 (* in_dom => i > 0 and i < q *)
 
-claim C_Hash_Lim2 : G_Choose_One.Main[res && count_Hash<limit_Hash && m_inject=m_adv] >= (1%r)/(limit_Hash%r) * G_Inv_Sign.Main[res && count_Hash < limit_Hash]
-compute.
+
 
 (* here *)
 
