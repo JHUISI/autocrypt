@@ -524,6 +524,7 @@ game G_Violate = G_Choose_One
     var dummy : bool;
     var b : int;
     var secret : G_1;
+    var dummy2 : G_1;
 
     dummy=Init();
     secret_key = Rand_exp();
@@ -536,14 +537,67 @@ game G_Violate = G_Choose_One
 
     (m_adv, s) = A(pk);
 
+    dummy2 = Hash(m_adv);
     return (s = secret);
   }
 .
 
 (* step 1: prove that condition C implies that verify succeeds *)
 
-equiv E_G_Violate : G_Choose_One.Main ~ G_Violate.Main : true ==> ((count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}) && ((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && (((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2}) => ={res}).
+equiv E_G_Violate : G_Choose_One.Main ~ G_Violate.Main : true ==> ((count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}) && ((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && (((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2}) => (res{1}=>res{2})).
+app 7 8 ={hashes,n_inject,m_adv,s} && ((count_Hash+1 < limit_Hash){1} = (count_Hash+1 < limit_Hash){2}) && ((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && (((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2}) => (in_dom(m_adv, hashes){1} && in_dom(m_adv, hashes){2} && ={s})).
+
+(*(((s=hashes[m_adv]^secret_key){1} && (!mem(m_adv, queried)){1})=>(s=secret){2}))). *)
 admit.
+inline.
+sp.
+case : (in_dom(m,hashes)).
+condf.
+wp.
+trivial.
+simpl.
+
+HERE
+
+condf.
+admit.
+condt.
+wp.
+sp.
+if{2}.
+wp.
+rnd{1}.
+trivial.
+
+
+
+sp.
+if{1}.
+wp.
+rnd{1}.
+wp.
+trivial.
+
+rand.
+
+case : ((enum[m_adv] = n_inject) &&
+          count_Hash < limit_Hash).
+
+
+
+          enum{1}[m_adv{1}] = n_inject{1} =>
+          enum{2}[m_adv{2}] = n_inject{2} )).
+condf{1}.
+wp.
+trivial.
+
+
+
+(count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}) && ((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && (((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2})((s=hashes[m_adv]^secret_key && count_Hash < limit_Hash && enum[m_adv]=n_inject && in_dom(m_adv, hashes)){1} = (s=hashes[m_adv]^secret_key && count_Hash<limit_Hash && enum[m_adv]=n_inject && in_dom(m_adv, hashes)){2}) && (count_Hash>n_inject){2}.
+case : (count_Hash < limit_Hash).
+
+*)
+
 save.
 
 
@@ -564,7 +618,7 @@ admit.
 claim C_1_5 : G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/(1+limit_Hash)%r <= G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]
 admit.
 
-claim C_1 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] = G_Violate.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]
+claim C_1 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] <= G_Violate.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]
 using E_G_Violate.
 
 claim C_2 : G_Violate.Main[count_Hash < limit_Hash && enum[m_adv]=n_inject && res] <= G_Violate.Main[res]
