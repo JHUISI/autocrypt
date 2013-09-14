@@ -516,9 +516,12 @@ def addGlobalVars(outputECFile, assignInfo, config, generatorsList, pairingSetti
     outputString += "  " + varKeyword_EC + " " + queriedName_EC + " : message list\n"
     outputECFile.write(outputString)
 
-def addGlobalVarsForHashes(outputECFile):
+def addGlobalVarsForHashes(outputECFile, assignInfo, config, pairingSetting):
+    hashGroupTypeOfSigFunc_SDL = getHashGroupTypeOfFunc(config.signFuncName_SDL, assignInfo, config)
+    hashGroupTypeOfSigFunc_EC = convertTypeSDLtoEC_Strings(hashGroupTypeOfSigFunc_SDL, pairingSetting)
+
     outputString = "  " + varKeyword_EC + " " + randomOracleVarName_EC + " : (" + messageType_EC
-    outputString += ", " + "G_1) map\n"
+    outputString += ", " + hashGroupTypeOfSigFunc_EC + ") map\n"
     outputECFile.write(outputString)
 
 def addHashFuncDef(outputECFile, assignInfo, config, pairingSetting):
@@ -531,7 +534,14 @@ def addHashFuncDef(outputECFile, assignInfo, config, pairingSetting):
     writeCountVarIncrement(outputECFile, hashFuncName_EC)
     outputString = ""
     outputString += "    if(!in_dom(m, " + randomOracleVarName_EC + ")) {\n"
-    outputString += "      " + randomOracleVarName_EC + "[m] = Rand_G_1();\n"
+    outputString += "      " + randomOracleVarName_EC + "[m] = Rand_"
+    if (hashGroupTypeOfSigFunc_EC == "G_1"):
+        outputString += "G_1"
+    elif (hashGroupTypeOfSigFunc_EC == "G_2"):
+        outputString += "G_2"
+    else:
+        sys.exit("addHashFuncDef in SDLtoECConvert.py:  hash group type of signature function obtained isn't of group type G1 or G2.")
+    outputString += "();\n"
     outputString += "    }\n"
     outputString += "    return " + randomOracleVarName_EC + "[m];\n"
     outputString += "  }\n\n"
@@ -539,7 +549,7 @@ def addHashFuncDef(outputECFile, assignInfo, config, pairingSetting):
     outputECFile.write(outputString)
 
 def addStatementsForPresenceOfHashes(outputECFile, assignInfo, config, pairingSetting):
-    addGlobalVarsForHashes(outputECFile)
+    addGlobalVarsForHashes(outputECFile, assignInfo, config, pairingSetting)
     addHashFuncDef(outputECFile, assignInfo, config, pairingSetting)
 
 def getInputSDLFileMetadata(inputSDLFileName):
@@ -1705,8 +1715,8 @@ def getPairingSetting(assignInfo, config):
 
     return pairingSetting
 
-def getGroupTypeOfHashStatements(assignInfo, config):
-    ddddd
+#def getGroupTypeOfHashStatements(assignInfo, config):
+    #ddddd
 
 def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     global DEBUG
@@ -1744,7 +1754,7 @@ def main(inputSDLFileName, configName, outputECFileName, debugOrNot):
     addCountVars(outputECFile, assignInfo, config, atLeastOneHashCall)
 
     if (atLeastOneHashCall == True):
-        groupTypeOfHashStatements = getGroupTypeOfHashStatements(assignInfo, config)
+        #groupTypeOfHashStatements = getGroupTypeOfHashStatements(assignInfo, config)
         addStatementsForPresenceOfHashes(outputECFile, assignInfo, config, pairingSetting)
 
     convertSignFunc(outputECFile, config, assignInfo, astNodes, generatorsList, pairingSetting)
