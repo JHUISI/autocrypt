@@ -1447,6 +1447,122 @@ def convertSubFuncsStructIntoFullyRecursiveChain(subFuncsStruct):
 
     return retDict
 
+def getAllVarsOnOneLineRecursive(assignNode, allVarsOnOneLine):
+    if (assignNode == None):
+        return
+
+    if (assignNode.type == ops.ATTR):
+        currentVarName = getFullVarName(assignNode, True)
+        if ( (currentVarName not in allVarsOnOneLine) and (currentVarName != inputKeyword) and (currentVarName != outputKeyword) and (currentVarName != "None") and (currentVarName != symmetricPairingSettingKeyword_SDL) and (currentVarName != asymmetricPairingSettingKeyword_SDL) ):
+            allVarsOnOneLine.append(currentVarName)
+
+    if (assignNode.left != None):
+        getAllVarsOnOneLineRecursive(assignNode.left, allVarsOnOneLine)
+    if (assignNode.right != None):
+        getAllVarsOnOneLineRecursive(assignNode.right, allVarsOnOneLine)
+
+def getAllVarsUsedInOneFunc(assignInfo, funcName):
+    if (funcName not in assignInfo):
+        sys.exit("getAllVarsUsedInOneFunc in SDLtoECConvert.py:  funcName passed in is not in assignInfo.")
+
+    allVarsUsedInOneFunc = []
+
+    for varName in assignInfo[funcName]:
+        varInfoObj = assignInfo[funcName][varName]
+        assignNode = varInfoObj.getAssignNode()
+        allVarsOnOneLine = []
+        getAllVarsOnOneLineRecursive(assignNode, allVarsOnOneLine)
+        for eachVarNameOnLine in allVarsOnOneLine:
+            if (eachVarNameOnLine not in allVarsUsedInOneFunc):
+                allVarsUsedInOneFunc.append(eachVarNameOnLine)
+
+    return allVarsUsedInOneFunc
+
+def getAllVarsUsedInEachFunc(assignInfo):
+    retDict = {}
+
+    for funcName in assignInfo:
+        retDict[funcName] = getAllVarsUsedInOneFunc(assignInfo, funcName)
+
+    return retDict
+
+def getExtraFuncsForAdversary(assignInfo, config):
+    # the adversary gets access to any function that uses any part of the secret key, but whose output
+    # includes components that are considered to be public.
+
+    allVarsUsedInEachFunc = getAllVarsUsedInEachFunc(assignInfo)
+
+    #print(allVarsUsedInEachFunc)
+
+    namesOfSecretKeyVars = []
+    namesOfSecretKeyVars.append(config.secretKeyName_SDL)
+
+    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+
+    for secretKeyVar in secretKeyVars:
+        if (secretKeyVar not in namesOfSecretKeyVars):
+            namesOfSecretKeyVars.append(secretKeyVar)
+
+    #print(namesOfSecretKeyVars)
+
+    funcsThatUseSecretVars = []
+
+    for funcName in assignInfo:
+        for currentVarName in allVarsUsedInEachFunc[funcName]:
+            if (currentVarName in namesOfSecretKeyVars):
+                if (funcName not in funcsThatUseSecretVars):
+                    funcsThatUseSecretVars.append(funcName)
+
+    #print(funcsThatUseSecretVars)
+
+    namesOfPublicKeyVars = []
+    namesOfPublicKeyVars.append(config.publicKeyName_SDL)
+
+    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+
+    for publicKeyVar in publicKeyVars:
+        if (publicKeyVar not in namesOfPublicKeyVars):
+            namesOfPublicKeyVars.append(publicKeyVar)
+
+    #print(namesOfPublicKeyVars)
+
+    for varConsideredToBePublic in config.varsConsideredToBePublic:
+        if (varConsideredToBePublic not in namesOfPublicKeyVars):
+            namesOfPublicKeyVars.append(varConsideredToBePublic)
+
+    retList = []
+
+    for funcName in assignInfo:
+        if (funcName == config.signFuncName_SDL):
+            continue
+
+        if (funcName not in funcsThatUseSecretVars):
+            continue
+
+        outputVarNames = getVarDeps(assignInfo, config, outputKeyword, funcName)
+        if (trueKeyword_SDL in outputVarNames):
+            outputVarNames.remove(trueKeyword_SDL)
+
+        if (falseKeyword_SDL in outputVarNames):
+            outputVarNames.remove(falseKeyword_SDL)
+
+        #print(funcName, " : ", outputVarNames)
+
+        foundOutputVarThatIsNotPublic = False
+
+        for outputVar in outputVarNames:
+            if (outputVar not in namesOfPublicKeyVars):
+                foundOutputVarThatIsNotPublic = True
+                break
+
+        if (foundOutputVarThatIsNotPublic == False):
+            retList.append(funcName)
+
+    #print(retList)
+
+    return retList
+
+'''
 def getExtraFuncsForAdversary(assignInfo, config):
     # the adversary gets access to all functions except for those that are only called from the sign
     # function.  So first determine which functions each function calls, then determine which functions
@@ -1498,6 +1614,7 @@ def getExtraFuncsForAdversary(assignInfo, config):
     #print(retList)
 
     return retList
+'''
 
 def getHashGroupTypeOfNodeRecursive(inputNode, hashesGroupTypesInFunc):
     if (inputNode.type == ops.HASH):

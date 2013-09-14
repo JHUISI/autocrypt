@@ -6,6 +6,9 @@
 an expression).  This is b/c we have to automatically infer the type of the output of the sign function,
 so we need some variable to analyze.
 
+-- NEW:  The output variable of every function EXCEPT FOR KEYGEN should be one variable name, nothign else 
+(i.e., it cannot be a list).  This is because we do not know how to output lists in EasyCrypt.
+
 -- All hashes performed in the signature function must hash to the same group (i.e., you cannot have one
 variable hashing to G1 and another hashing to G2).
 

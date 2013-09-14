@@ -62,7 +62,7 @@ hhh1 := hhh ^ var3
 testVariable3 := (hhh1^sk1)
 # var10 := testFunction3(None)
 # var9 := testFunction4(None)
-output := testVariable3
+output := var3
 END :: func:testFunction2
 
 BEGIN :: func:sign

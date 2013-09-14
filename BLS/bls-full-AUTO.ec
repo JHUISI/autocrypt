@@ -122,7 +122,7 @@ axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_exp() : true ==> x = g_2 ^ y.
 
 axiom Rand_G_2_def() : x = Rand_G_2() ~ y = Rand_exp() : true ==> x = g_1 ^ y.
 
-adversary Adv (adv_public_key_1 : G_2, adv_public_key_2 : int) : (message * G_1) {message -> G_1; (message) -> G_1; (message) -> G_2; () -> int; (message) -> G_1; () -> int; () -> int}.
+adversary Adv (adv_public_key_1 : G_2, adv_public_key_2 : int) : (message * G_1) {message -> G_1; (message) -> G_1; (message) -> G_2; (message) -> int}.
 
 game blsfull_EF = {
   var sk1 : int
@@ -131,10 +131,7 @@ game blsfull_EF = {
   var queried : message list
   var count_Hash : int
   var count_testFunction : int
-  var count_testFunction3 : int
   var count_testFunction2 : int
-  var count_testFunction5 : int
-  var count_testFunction4 : int
   var count_Sign : int
   var count_Verify : int
   var rand_oracle : (message, G_1) map
@@ -176,51 +173,20 @@ game blsfull_EF = {
     return output;
   }
 
-  fun testFunction3() : int = {
-    var var7 : int;
-    var var6 : int;
-    var output : int;
-    count_testFunction3 = count_testFunction3 + 1;
-    var6 = Rand_exp();
-    var7 = testFunction4();
-    output = var6;
-    return output;
-  }
-
-  fun testFunction2(M : message) : G_1 = {
+  fun testFunction2(M : message) : int = {
     var testVariable3 : G_1;
-    var output : G_1;
+    var output : int;
     var hhh : G_1;
     var hhh1 : G_1;
     count_testFunction2 = count_testFunction2 + 1;
     hhh = Hash(M);
     hhh1 = (hhh ^ var3);
     testVariable3 = (hhh1 ^ sk1);
-    output = testVariable3;
+    output = var3;
     return output;
   }
 
-  fun testFunction5() : int = {
-    var var13 : int;
-    var output : int;
-    count_testFunction5 = count_testFunction5 + 1;
-    var13 = Rand_exp();
-    output = var13;
-    return output;
-  }
-
-  fun testFunction4() : int = {
-    var output : int;
-    var var8 : int;
-    var var12 : int;
-    count_testFunction4 = count_testFunction4 + 1;
-    var8 = Rand_exp();
-    var12 = testFunction5();
-    output = var8;
-    return output;
-  }
-
-  abs A = Adv{Hash, Sign, testFunction, testFunction3, testFunction2, testFunction5, testFunction4}
+  abs A = Adv{Hash, Sign, testFunction, testFunction2}
 
   fun Verify(M : message, sig : G_1) : bool = {
     var h : G_1;
@@ -244,10 +210,7 @@ game blsfull_EF = {
     var var333 : G_2;
     var x : int;
     count_testFunction = 0;
-    count_testFunction3 = 0;
     count_testFunction2 = 0;
-    count_testFunction5 = 0;
-    count_testFunction4 = 0;
     count_Hash = 0;
     count_Sign = 0;
     count_Verify = 0;
