@@ -1,5 +1,7 @@
 prover alt-ergo, z3, cvc3.
 
+timeout 10.
+
 type G_1.
 type G_T.
 type message.
@@ -373,6 +375,7 @@ game G_Choose_One = G_Inv_Sign
   var m_adv : message
   var enum : (message, int) map
   var given_2 : G_1
+  var bad : bool
 
   where Init = {
     enum = empty_map;
@@ -401,6 +404,18 @@ game G_Choose_One = G_Inv_Sign
       (* } *)
     }
     return hashes[m];
+  }
+
+  and Sign = {
+    var h : G_1;
+    var s : G_1;
+    h = Hash(m);
+    s = sigs[m];
+    queried = m :: queried;
+    if (enum[m]=n_inject) {
+      bad = true;
+    }
+    return s;
   }
 
   and Main = {
@@ -498,6 +513,57 @@ rnd{2}.
 trivial.
 save.
 
+equiv E_Bad_Insig_Hash : G_Choose_One.Hash ~ G_Choose_One.Hash : 
+ ={m,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
+((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1})
+==>
+ ={res,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
+((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1}).
+derandomize.
+rnd>>.
+wp.
+trivial.
+save.
+
+equiv E_Bad_Insig_Sign : G_Choose_One.Sign ~ G_Choose_One.Sign :  
+ ={m,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
+((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1})
+==>
+ ={res,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
+((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1}).
+inline.
+derandomize.
+rnd>>.
+app 5 5 ( ={s,m,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} && forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) && in_dom(m, hashes){1} &&
+((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1}).
+wp.
+trivial.
+wp.
+trivial.
+save.
+
+equiv E_Bad_Insig_A : G_Choose_One.A ~ G_Choose_One.A :  
+ ={adv_public_key,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} && (forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
+((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1})
+==>
+ ={res,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
+((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1}) by auto (
+ ={bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
+((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1})
+).
+save.
+
+HERE
+
+
+(* prove res => !bad, then add !bad to everything in the equiv below *)
+
 game G_Violate = G_Choose_One
   where Hash = {
     var exp : int;
@@ -542,14 +608,24 @@ game G_Violate = G_Choose_One
   }
 .
 
+(* Prove the output of the hash functions is the same when count isn't n_inject *)
+
+(* Prove that m!=m_inject implies that the output of Sign is the same *)
+
+
+
+
+
 (* step 1: prove that condition C implies that verify succeeds *)
 
 equiv E_G_Violate : G_Choose_One.Main ~ G_Violate.Main : true ==> ((count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}) && ((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && (((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2}) => (res{1}=>res{2})).
+
 app 7 8 ={hashes,n_inject,m_adv,s} && ((count_Hash+1 < limit_Hash){1} = (count_Hash+1 < limit_Hash){2}) && ((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && (((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2}) => (in_dom(m_adv, hashes){1} && in_dom(m_adv, hashes){2} && ={s})).
 
 (*(((s=hashes[m_adv]^secret_key){1} && (!mem(m_adv, queried)){1})=>(s=secret){2}))). *)
 admit.
 inline.
+
 sp.
 case : (in_dom(m,hashes)).
 condf.
