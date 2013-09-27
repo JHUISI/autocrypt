@@ -34,6 +34,7 @@ op e : (G_1, G_1) -> G_T as G_1_pair.
 op [%%] : (int,int) -> int as int_mod.
 
 axiom q_pos : 0 < q.
+axiom limit_Hash_pos : 0 < limit_Hash.
 
 (* Axioms largely pulled from ElGamal.  Note that G_1 and G_T have the same order if the order is prime. *)
 
@@ -376,6 +377,7 @@ game G_Choose_One = G_Inv_Sign
   var enum : (message, int) map
   var given_2 : G_1
   var bad : bool
+  var n_inject_fake : int
 
   where Init = {
     enum = empty_map;
@@ -436,9 +438,65 @@ game G_Choose_One = G_Inv_Sign
     (m_adv, s) = A(pk);
 
     v = Verify(m_adv, s, pk);
+    n_inject_fake = [1..limit_Hash];
     return v && !mem(m_adv, queried);
   }
 .
+
+equiv E_n_inject_fake : G_Choose_One.Main ~ G_Choose_One.Main : 
+true
+==>
+(count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject_fake){1} 
+= 
+(count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject){2}.
+admit.
+save. 
+
+equiv E_n_inject_no_range : G_Choose_One.Main ~ G_Choose_One.Main : 
+true
+==>
+(count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1){1}
+= 
+(count_Hash<limit_Hash && res){2}. 
+admit.
+save. 
+
+claim C_inject_fake_prob : 
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1] * 1%r/(limit_Hash)%r 
+<= 
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject_fake]
+compute.
+
+claim C_inject_fake_eq : G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject_fake] 
+= 
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject]
+using E_n_inject_fake.
+
+claim C_n_inject_no_range : G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1] 
+= 
+G_Choose_One.Main[count_Hash<limit_Hash && res] 
+using E_n_inject_no_range.
+
+claim C_inject_prob_bloat : 
+G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r
+<=
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject_fake].
+
+claim C_inject_prob_bloat_2 : 
+G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r
+<=
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject].
+
+claim C_inject_prob_debloat :
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject]
+<=
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject]
+same.
+
+claim C_inject_prob : 
+G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r 
+<= 
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject].
 
 (* prove that the output of the hash functions is still the same *)
 equiv Mod_Hash2 : G_Inv_Sign.Hash ~ G_Choose_One.Hash:    
@@ -487,6 +545,7 @@ save.
 
 
 equiv E_G_Choose_One_unlimited : G_Inv_Sign.Main ~ G_Choose_One.Main : true ==> ={res}.
+rnd{2}.
 call using Mod_Verify2.
 call using Mod_A2.
 wp.
@@ -500,6 +559,7 @@ trivial.
 save.
 
 equiv E_G_Choose_One : G_Inv_Sign.Main ~ G_Choose_One.Main : true ==> ={res} && (count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}.
+rnd{2}.
 call using Mod_Verify2.
 call using Mod_A2.
 wp.
@@ -694,6 +754,7 @@ same.
 claim C_0 : BLS_EF.Main[count_Hash<limit_Hash && res] = G_Choose_One.Main[count_Hash<limit_Hash && res]
 admit.
 
+(*
 claim C_1_1 : G_Choose_One.Main[true] = 1%r
 compute.
 
@@ -703,45 +764,43 @@ admit.
 claim C_1_2 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] = G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject]
 same.
 
-claim C_1_3 :  G_Choose_One.Main[enum[m_adv]<limit_Hash && enum[m_adv]>0] * 1%r/(2+limit_Hash)%r <= G_Choose_One.Main[enum[m_adv]<limit_Hash && enum[m_adv]>0 && enum[m_adv]=n_inject]
+claim C_1_3 :  G_Choose_One.Main[enum[m_adv]<limit_Hash && enum[m_adv]>0] * 1%r/(2+limit_Hash)%r <= G_Choose_One.Main[enum[m_adv]<limit_Hash && enum[m_adv]>0 && enum[m_adv]=TRASH]
 compute.
+*)
 
-
-(* need to figure out how to get this to work *)
-claim C_1_5 : G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/(2+limit_Hash)%r <= G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject]
-compute.
-
-claim C_1_0 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && !bad && res] <= G_Violate.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && !bad && res]
+claim C_Violate_eq : G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && !bad] <= G_Violate.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && !bad]
 using E_G_Violate.
 
-(* need to figure this out, how to deal with !bad being insignificant *)
-claim C_1_1 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] <= G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && (!bad) && res]
+claim C_Bad_Insig : G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject] <= G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && (!bad)]
 using E_Bad_Insig.
 
-
-claim C_1_2 : G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/(1+limit_Hash)%r <= G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && (!bad) && res].
+claim C_Inject_Prob_wBad : G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r <= G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && (!bad)].
 
 (*
 claim C_1 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] <= G_Violate.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]
 same.
 *)
 
-claim C_2 : G_Violate.Main[count_Hash < limit_Hash && enum[m_adv]=n_inject && (!bad) && res] <= G_Violate.Main[res]
+claim C_Violate_debloat : G_Violate.Main[count_Hash < limit_Hash && res && enum[m_adv]=n_inject && (!bad)] <= G_Violate.Main[res]
 same.
 
-claim C_1_7 : BLS_EF.Main[count_Hash<limit_Hash && res] * 1%r/(1+limit_Hash)%r <= G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]. 
+claim C_1_7 : BLS_EF.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r <= G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject].
 
+claim C_3 : G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && (!bad)] <= G_Violate.Main[res].
 
-
-claim C_3 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && (!bad) && res] <= G_Violate.Main[res].
-
-claim C_4 : BLS_EF.Main[count_Hash<limit_Hash && res] * 1%r/(1+limit_Hash)%r <= G_Violate.Main[res].
+claim C_4 : BLS_EF.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r <= G_Violate.Main[res].
 
 
 
 
-
+=========================================================
 All TRASH from here
+
+
+
+
+
+
 
 
             
