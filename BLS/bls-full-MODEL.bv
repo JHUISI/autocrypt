@@ -1,0 +1,113 @@
+name := bls
+# number of signatures in a batch
+N := 100
+setting := asymmetric
+
+# types for variables used in verification.
+# all other variable types are inferred by SDL parser
+BEGIN :: types
+ M := Str
+END :: types
+
+BEGIN :: func:testFunction5
+input := None
+var13 := random(ZR)
+output := var13
+END :: func:testFunction5
+
+BEGIN :: func:testFunction4
+input := None
+var8 := random(ZR)
+var12 := testFunction5(None)
+output := var8
+END :: func:testFunction4
+
+BEGIN :: func:testFunction3
+input := None
+var6 := random(ZR)
+var7 := testFunction4(None)
+output := var6
+END :: func:testFunction3
+
+# description of key generation and signing algorithms
+BEGIN :: func:keygen
+input := None
+ g := random(G2)
+ var333 := random(G2)
+ x := random(ZR)
+ pk1 := g^x
+ sk1 := x
+ var2 := random(G1)
+ var3 := random(ZR)
+ var5 := testFunction3(None)
+ pk := list{pk1, var3}
+ sk := list{sk1, var2}
+output := list{pk, sk, g, var2}
+END :: func:keygen
+
+BEGIN :: func:testFunction
+input := list{sk, M, var3}
+sk := expand{sk1, var2}
+hh := H(M, G2)
+hh1 := hh ^ var3
+testVariable := (hh1^sk1)
+output := testVariable
+END :: func:testFunction
+
+BEGIN :: func:testFunction2
+input := list{sk, M, var3}
+sk := expand{sk1, var2}
+hhh := H(M, G1)
+hhh1 := hhh ^ var3
+testVariable3 := (hhh1^sk1)
+# var10 := testFunction3(None)
+# var9 := testFunction4(None)
+output := var3
+END :: func:testFunction2
+
+BEGIN :: func:sign
+input := list{sk, M}
+sk := expand{sk1, var2}
+sig := H(M, G1)
+sigsig := sig ^ sk1
+sig2 := (H(M, G1))
+var27 := testFunction3(None)
+output := sigsig
+END :: func:sign
+
+BEGIN :: func:verify
+ input := list{pk, M, sig, g, var2, var3}
+ pk := expand{pk1, var3}
+ h := H(M, G1)
+BEGIN :: if
+if {e(h, pk1) == e(sig, g)}
+output := True
+else
+output := False
+END :: if
+# test := (e(h, pk1) == e(sig, g))
+# output := v
+ output := (e(h, pk1) == e(sig, g))
+ var4 := var2 ^ var3
+END :: func:verify
+
+constant := list{g, var2}
+generator := list{g, var2}
+public :=  pk
+signature :=  sig
+message :=  h
+
+# single signer
+BEGIN :: count
+message_count := N
+public_count := one
+signature_count := N
+END :: count
+
+# variables computed before each signature verification
+BEGIN :: precompute
+  h := H(M, G1)
+END :: precompute
+
+# individual verification check
+verify := {e(h, pk1) == e(sig, g)}

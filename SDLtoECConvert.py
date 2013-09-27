@@ -490,12 +490,35 @@ def getVarDeps(assignInfo, config, varName, funcName):
 
     return assignInfo[funcName][varName].getVarDeps()
 
+def getVarDepsOrJustVarItself(assignInfo, config, varName, funcName):
+    # NOTE:  this function gets variable dependencies in a very specific way.  If the variable name passed
+    # in is comprised of a list, all of the members of that list are returned.  Otherwise, the variable
+    # name passed in is returned.  Example:
+    #
+    # pk := list{g, x}
+    # would return [g, x]
+    #
+    # sk := x ^ y
+    # would return sk
+
+    if (funcName not in assignInfo):
+        sys.exit("getVarDepsOrJustVarItself in SDLtoECConvert.py:  function name passed in isn't in assignInfo.")
+
+    if (varName not in assignInfo[funcName]):
+        sys.exit("getVarDepsOrJustVarItself in SDLtoECConvert.py:  variable name passed in isn't in the entry of assignInfo for the function name passed in.")
+
+    varDeps = assignInfo[funcName][varName].getListNodesList()
+    if (len(varDeps) == 0):
+        return [varName]
+
+    return varDeps
+
 def addGlobalVars(outputECFile, assignInfo, config, generatorsList, pairingSetting):
     #outputString = "  " + varKeyword_EC + " " + secretKeyName_EC + " : int\n"
 
     outputString = ""
 
-    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
     for secretKeyVar in secretKeyVars:
         # generators are generators, so they don't get declared
@@ -504,7 +527,7 @@ def addGlobalVars(outputECFile, assignInfo, config, generatorsList, pairingSetti
         currentVarType = getVarTypeFromVarName_EC(secretKeyVar, config.keygenFuncName_SDL, pairingSetting)
         outputString += "  " + varKeyword_EC + " " + secretKeyVar + " : " + currentVarType + "\n"
 
-    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    publicKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
     for publicKeyVar in publicKeyVars:
         # generators are generators, so they don't get declared
@@ -621,8 +644,8 @@ def writeVarDecls(outputECFile, oldFuncName, assignInfo, config, generatorsList,
     # public key variables and secret key variables are all declared globally, so don't declare them
     # locally.
 
-    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
-    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+    publicKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
     listOfVarsToNotDeclare = []
 
@@ -1038,8 +1061,8 @@ def writeFuncDecl(outputECFile, oldFuncName, newFuncName, config, assignInfo, ge
 def getLineOfInputParams(funcName, config, assignInfo, generatorsList, pairingSetting):
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
 
-    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
-    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+    publicKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
     
     outputString = ""
 
@@ -1143,8 +1166,8 @@ def writeVerifyArgsDeclForMain(outputECFile, config, assignInfo, generatorsList,
     outputECFile.write(outputString)
 
 def getJustInputVarsForFunc(assignInfo, config, funcName, generatorsList):
-    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
-    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+    publicKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
     listOfVarsToNotDeclare = []
 
@@ -1247,7 +1270,7 @@ def writeCallToAbstractAdversaryFunction(outputECFile, config, assignInfo):
     #outputString += " " + adversaryIdentifier_EC + "(" + config.publicKeyName_SDL + ");\n\n"
     outputString += " " + adversaryIdentifier_EC + "("
 
-    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    publicKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
     for publicKeyVar in publicKeyVars:
         outputString += publicKeyVar + ", "
@@ -1661,8 +1684,8 @@ def getInputVarsForFunc(outputECFile, assignInfo, config, funcName, generatorsLi
 
     inputOutputVarsDict = getInputOutputVarsDictOfFunc(funcName)
 
-    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
-    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+    publicKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
     
     for varName in inputOutputVarsDict[inputKeyword]:
         # b/c our generators are generators, so no need to declare them here
@@ -1708,7 +1731,7 @@ def addAdversaryDeclLineToOutputECFile(outputECFile, assignInfo, config, generat
 
     #pubKeyType = getVarTypeFromVarName_EC(config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
-    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    publicKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
     counterForAdvPubKeyDecls = 1
 

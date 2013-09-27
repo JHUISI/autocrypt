@@ -8,4 +8,4 @@ signatureVarName_SDL = "sig"
 constantKeyword_SDL = "constant"
 generatorKeyword_SDL = "generator"
 pairingSettingKeyword_SDL = "setting"
-varsConsideredToBePublic = ["testVariable", "testVariable3"]
+varsConsideredToBePublic = []
