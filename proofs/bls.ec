@@ -462,10 +462,14 @@ equiv E_Prob_Facts_Hash : G_Choose_One.Hash ~ G_Choose_One.Hash :
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
 &&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
+&&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2})
 ==>
@@ -476,10 +480,14 @@ equiv E_Prob_Facts_Hash : G_Choose_One.Hash ~ G_Choose_One.Hash :
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
 &&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
+&&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2}).
 
@@ -498,10 +506,14 @@ equiv E_Prob_Facts_Sign : G_Choose_One.Sign ~ G_Choose_One.Sign :
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
 &&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
+&&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2})
 ==>
@@ -512,10 +524,14 @@ equiv E_Prob_Facts_Sign : G_Choose_One.Sign ~ G_Choose_One.Sign :
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
 &&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
+&&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2}).
 wp.
@@ -531,10 +547,14 @@ equiv E_Prob_Facts_Verify : G_Choose_One.Verify ~ G_Choose_One.Verify :
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
 &&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
+&&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2})
 ==>
@@ -545,10 +565,14 @@ equiv E_Prob_Facts_Verify : G_Choose_One.Verify ~ G_Choose_One.Verify :
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
 &&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
+&&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2}).
 wp.
@@ -566,24 +590,32 @@ equiv E_Prob_Facts_A : G_Choose_One.A ~ G_Choose_One.A :
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
 &&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
+&&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2})
 ==>
 ={res,given_2,enum,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key}
 &&
-(count_Hash{1}>=0) 
+(count_Hash{1}>=0)
 &&
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
+&&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
 &&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2})
 by auto (
@@ -594,10 +626,14 @@ by auto (
 (count_Hash{1}<limit_Hash =>
 (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) 
 &&
+(forall (mq:message), (in_dom(mq, hashes{1}) => in_dom(mq, enum{1})))
+&&
 (count_Hash{2}>=0)
 &&
 (count_Hash{2}<limit_Hash => 
 (forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+&&
+(forall (mq:message), (in_dom(mq, hashes{2}) => in_dom(mq, enum{2})))
 &&
 (n_inject_fake{1} = n_inject{2})
 ).
@@ -633,9 +669,7 @@ true
 = 
 (count_Hash<limit_Hash && res){2}. 
 (* need to show in_dom(m_adv, enum) *)
-inline Init.
-inline Verify.
-inline Hash.
+inline.
 derandomize.
 swap{1} [1-4] 1.
 swap{2} [2-4] 1.
@@ -651,9 +685,6 @@ call using E_Prob_Facts_A.
 wp.
 trivial.
 save.
-
-TODO: complete
-
 
 claim C_inject_fake_prob : 
 G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1] * 1%r/(limit_Hash)%r 
