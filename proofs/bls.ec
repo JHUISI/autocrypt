@@ -89,7 +89,6 @@ axiom mod_bound :
 pop Rand_exp   : () -> (int).
 pop Rand_G_1 : () -> (G_1).
 
-(* axiom Rand_G_1_exp_def() : x = Rand_G_1_exp() ~ y = [0..q-1] : true ==> x = y. *)
 axiom Rand_G_1_def() : x = Rand_G_1() ~ y = Rand_exp() : true ==> x = g_1 ^ y.
 
 adversary Adv (adv_public_key : G_1) : (message * G_1) {(message) -> G_1; message -> G_1}.
@@ -223,9 +222,11 @@ var given_1 : G_1 (* analogous to the public key *)
 (* prove that the output of the hash functions is still the same *)
 equiv Mod_Hash : BLS_EF.Hash ~ G_Inv_Sign.Hash :    
   ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
   ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) =>
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
 sp.
@@ -240,9 +241,11 @@ save.
 (* Next we need to prove that the output of the Sign function is still the same *)
 equiv Mod_Sign : BLS_EF.Sign ~ G_Inv_Sign.Sign :
   ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) =>
     sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
   ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) =>
     sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
 
@@ -273,9 +276,9 @@ simpl.
 trivial.
 save.
 
-equiv Mod_Verify : BLS_EF.Verify ~ G_Inv_Sign.Verify : ={m, s, pk, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
+equiv Mod_Verify : BLS_EF.Verify ~ G_Inv_Sign.Verify : ={m, s, pk, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} && (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2} &&
     (forall (m_0:message), in_dom(m_0,hashes{2}) => 
-      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==> ={res,queried, count_Hash}.
+      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==> ={res,queried,count_Hash} && (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}.
 wp.
 call using Mod_Hash.
 wp.
@@ -284,17 +287,19 @@ save.
 
 equiv Mod_A : BLS_EF.A ~ G_Inv_Sign.A : 
 ={adv_public_key, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2} &&
 (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})
   ==>
   ={res, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) by auto(={secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} && given_1{2}=g_1^secret_key{2} &&
   (forall (m_0:message), in_dom(m_0,hashes{2}) => 
       sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})).
     
 
-equiv e_G_Inv_Sign_unlimited : BLS_EF.Main ~ G_Inv_Sign.Main : true ==> ={res}.
+equiv e_G_Inv_Sign_unlimited : BLS_EF.Main ~ G_Inv_Sign.Main : true ==> ={res} && (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}.
 call using Mod_Verify.
 call using Mod_A.
 wp.
@@ -304,7 +309,7 @@ rnd.
 trivial.
 save.
 
-equiv e_G_Inv_Sign : BLS_EF.Main ~ G_Inv_Sign.Main : true ==> ={res} && (count_Hash{1} <= limit_Hash)=(count_Hash{2} <= limit_Hash).
+equiv e_G_Inv_Sign : BLS_EF.Main ~ G_Inv_Sign.Main : true ==> ={res} && (count_Hash{1} < limit_Hash)=(count_Hash{2} < limit_Hash).
 call using Mod_Verify.
 call using Mod_A.
 wp.
@@ -313,6 +318,9 @@ wp.
 rnd.
 trivial.
 save.
+
+claim C_basic_equiv_1 : BLS_EF.Main[res && count_Hash<limit_Hash] = G_Inv_Sign.Main[res && count_Hash<limit_Hash]
+using e_G_Inv_Sign.
 
 (*
    we made it so we can "sign" using the public key only
@@ -443,13 +451,134 @@ game G_Choose_One = G_Inv_Sign
   }
 .
 
+
+equiv E_Prob_Facts_Hash : G_Choose_One.Hash ~ G_Choose_One.Hash : 
+={m,n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} && 
+(count_Hash{1}>=1 && count_Hash{1}<limit_Hash => (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) &&
+(count_Hash{2}>=1 && count_Hash{2}<limit_Hash => 
+(forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))
+==>
+={res,n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(count_Hash{1}>=2 && count_Hash{1}<limit_Hash => (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) &&
+(count_Hash{1}>=2 && count_Hash{2}<limit_Hash => 
+(forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash)))).
+
+derandomize.
+wp.
+rnd.
+trivial.
+save.
+
+
+app 1 1 (={m,n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} && 
+(count_Hash{1}>=1 && count_Hash{1}<limit_Hash => (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) &&
+(count_Hash{2}>=1 && count_Hash{2}<limit_Hash => 
+(forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))).
+rnd.
+trivial.
+
+app 1 1 (={exp_0,m,n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} && 
+(count_Hash{1}>=1 && count_Hash{1}<limit_Hash => (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) &&
+(count_Hash{2}>=1 && count_Hash{2}<limit_Hash => 
+(forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))).
+
+
+
+if.
+app 1 1 (={exp_0,m,n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(count_Hash{1}<limit_Hash => (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) &&
+(count_Hash{2}<limit_Hash => 
+(forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))).
+wp.
+trivial.
+
+
+wp.
+trivial.
+
+
+
+case: !(!in_dom(m,hashes)).
+condf.
+
+trivial.
+
+if.
+
+
+
+wp.
+trivial.
+
+if.
+
+
+
+
+app 1 1 (={n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
+(count_Hash{1}<limit_Hash => (forall (mq:message), (in_dom(mq, enum{1}) => (enum{1}[mq]>=1 && enum{1}[mq]<limit_Hash)))) &&
+(count_Hash{2}<limit_Hash => 
+(forall (mq:message), (in_dom(mq, enum{2}) => (enum{2}[mq]>=1 && enum{2}[mq]<limit_Hash))))).
+trivial.
+
+
+
+
+
+auto.
+sp.
+if.
+sp.
+wp.
+rnd.
+simpl.
+
+
+equiv E_Prob_Facts_A : G_Choose_One.A ~ G_Choose_One.A : 
+={adv_public_key,n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} && 
+((count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject_fake){1} 
+=
+(count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject){2}) && 
+((count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1){1}
+= 
+(count_Hash<limit_Hash){2}) 
+==>
+={res,n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} 
+&&
+((count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject_fake){1} 
+= 
+(count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject){2}) &&
+(((count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1){1}
+= 
+(count_Hash<limit_Hash){2}))
+by auto (={n_inject_fake,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} 
+&&
+((count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject_fake){1} 
+= 
+(count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject){2}) &&
+(((count_Hash<limit_Hash && enum[m_adv]<limit_Hash && enum[m_adv]>=1){1}
+= 
+(count_Hash<limit_Hash){2}))).
+
 equiv E_n_inject_fake : G_Choose_One.Main ~ G_Choose_One.Main : 
 true
 ==>
 (count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject_fake){1} 
 = 
 (count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1 && enum[m_adv]=n_inject){2}.
-admit.
+inline.
+derandomize.
+swap{1} 3.
+swap{2} 4.
+wp.
+auto.
+rnd.
+rnd.
+rnd.
+rnd.
+rnd.
+simpl.
+trivial.
 save. 
 
 equiv E_n_inject_no_range : G_Choose_One.Main ~ G_Choose_One.Main : 
@@ -498,13 +627,27 @@ G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r
 <= 
 G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject].
 
+(*junk to get the order of the conjuncts right *)
+claim C_inject_prob2 : 
+G_Choose_One.Main[count_Hash<limit_Hash && res] 
+=
+G_Choose_One.Main[res && count_Hash<limit_Hash]
+same.
+
+claim C_inject_prob3 : 
+G_Choose_One.Main[res && count_Hash<limit_Hash] * 1%r/limit_Hash%r 
+<= 
+G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject].
+
 (* prove that the output of the hash functions is still the same *)
 equiv Mod_Hash2 : G_Inv_Sign.Hash ~ G_Choose_One.Hash:    
-  ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}
+  ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}
   ==>
-  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}.
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}.
 derandomize.
-app 2 2 ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1,exp_0}.
+app 2 2 ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1,exp_0} && (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}.
 wp.
 rnd.
 trivial.
@@ -520,23 +663,30 @@ save.
 
 (* Next we need to prove that the output of the Sign function is still the same *)
 equiv Mod_Sign2 : G_Inv_Sign.Sign ~ G_Choose_One.Sign :
-  ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}
+  ={m,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}
   ==>
-  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}.
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}.
 wp.
 call using Mod_Hash2.  
 trivial.
 save.
 
 equiv Mod_A2 : G_Inv_Sign.A ~ G_Choose_One.A : 
-  ={adv_public_key,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}
+  ={adv_public_key,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}
   ==>
-  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} by auto(={secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}).
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}
+by auto(={secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} && (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}).
 
 equiv Mod_Verify2 : G_Inv_Sign.Verify ~ G_Choose_One.Verify : 
-  ={m,s,pk,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}
+  ={m,s,pk,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} && 
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}
   ==>
-  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1}.
+  ={res,secret_key,queried,count_Hash,sigs,hashes,rand_oracle,given_1} &&
+  (count_Hash<limit_Hash){1} = (count_Hash<limit_Hash){2}.
 wp.
 call using Mod_Hash2.
 wp.
@@ -572,6 +722,8 @@ rnd{2}.
 rnd{2}.
 trivial.
 save.
+
+claim C_basic_2 : G_Inv_Sign.Main[res && count_Hash<limit_Hash] = G_Choose_One.Main[res && count_Hash<limit_Hash] using E_G_Choose_One.
 
 equiv E_Bad_Insig_Hash : G_Choose_One.Hash ~ G_Choose_One.Hash : 
  ={m,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
@@ -738,35 +890,7 @@ case : (count_Hash < limit_Hash).
 *)
 save.
 
-
-(*
-claim C_neg1 : BLS_EF.Main[res && count_Hash<limit_Hash] <= BLS_EF.Main[res]
-same.
-
-claim C_0 : BLS_EF.Main[res] = G_Choose_One.Main[res]
-admit.
-
-claim C_1_5 : G_Choose_One.Main[res && count_Hash<limit_Hash && enum[m_adv]=n_inject] <= G_Choose_One.Main[res]
-same.
-*)
-
-(* need to update proofs to include count_Hash<limit_Hash *)
-claim C_0 : BLS_EF.Main[count_Hash<limit_Hash && res] = G_Choose_One.Main[count_Hash<limit_Hash && res]
-admit.
-
-(*
-claim C_1_1 : G_Choose_One.Main[true] = 1%r
-compute.
-
-claim C_junk555 : G_Choose_One.Main[enum[m_adv]<limit_Hash && enum[m_adv]>0 && enum[m_adv]=n_inject] = 1%r
-admit.
-
-claim C_1_2 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] = G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject]
-same.
-
-claim C_1_3 :  G_Choose_One.Main[enum[m_adv]<limit_Hash && enum[m_adv]>0] * 1%r/(2+limit_Hash)%r <= G_Choose_One.Main[enum[m_adv]<limit_Hash && enum[m_adv]>0 && enum[m_adv]=TRASH]
-compute.
-*)
+claim C_basic_3 : BLS_EF.Main[res && count_Hash<limit_Hash] = G_Choose_One.Main[res && count_Hash<limit_Hash].
 
 claim C_Violate_eq : G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && !bad] <= G_Violate.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && !bad]
 using E_G_Violate.
@@ -776,19 +900,14 @@ using E_Bad_Insig.
 
 claim C_Inject_Prob_wBad : G_Choose_One.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r <= G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && (!bad)].
 
-(*
-claim C_1 : G_Choose_One.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res] <= G_Violate.Main[count_Hash<limit_Hash && enum[m_adv]=n_inject && res]
-same.
-*)
-
 claim C_Violate_debloat : G_Violate.Main[count_Hash < limit_Hash && res && enum[m_adv]=n_inject && (!bad)] <= G_Violate.Main[res]
 same.
 
-claim C_1_7 : BLS_EF.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r <= G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject].
+claim C_1_7 : BLS_EF.Main[res && count_Hash<limit_Hash] * 1%r/limit_Hash%r <= G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject].
 
 claim C_3 : G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]=n_inject && (!bad)] <= G_Violate.Main[res].
 
-claim C_4 : BLS_EF.Main[count_Hash<limit_Hash && res] * 1%r/limit_Hash%r <= G_Violate.Main[res].
+claim C_4 : BLS_EF.Main[res && count_Hash<limit_Hash] * 1%r/limit_Hash%r <= G_Violate.Main[res].
 
 
 
@@ -802,259 +921,6 @@ All TRASH from here
 
 
 
-
-            
-
-
-
-(res && count_Hash < limit_Hash && enum[m_adv]=n_inject){1} = (res && !mem(m_adv, queried) && count_Hash < limit_Hash && enum[m_adv]=n_inject){2}.
-
-
-equiv E_G_Violate : G_Choose_One.Main ~ G_Violate.Main : true ==> (res && count_Hash < limit_Hash && enum[m_adv]=n_inject){1} = (res && !mem(m_adv, queried) && count_Hash < limit_Hash && enum[m_adv]=n_inject){2}.
-app 7 8 ((s=hashes[m_adv]^secret_key && count_Hash < limit_Hash && enum[m_adv]=n_inject && in_dom(m_adv, hashes)){1} = (s=hashes[m_adv]^secret_key && count_Hash < limit_Hash && enum[m_adv]=n_inject && in_dom(m_adv, hashes)){2}) && (count_Hash>n_inject){2}.
-admit.
-
-
-inline.
-condf{1}.
-wp.
-trivial.
-
-
-ifsync{1} 7.
-
-(* need to create cases for the conditions of our postcondition *)
-
-
-
-(* need to add something about whether we chose the right thing to hijack *)
-
-
-
-HERE
-
-
-
-claim C_Basic : G_Choose_One.Main[res] = G_Inv_Sign.Main[res]
-using E_G_Choose_One.
-
-
-claim C_Hash_Lim : G_Choose_One.Main[res && count_Hash < limit_Hash] = G_Inv_Sign.Main[res && count_Hash < limit_Hash]
-using E_G_Choose_One.
-
-claim Test1 : G_Inv_Sign.Main[res && count_Hash < limit_Hash] <= G_Inv_Sign.Main[res]
-same.
-
-claim Test2 : G_Choose_One.Main[res && count_Hash < limit_Hash] <= G_Inv_Sign.Main[res].
-
-equiv E_G_Choose_One_Prob : G_Choose_One.Main ~ G_Choose_One.Main : true ==> (enum[m_adv] > 0 && enum[m_adv] < count_Hash){1}.
-admit.
-
-claim C_test5 : G_Choose_One.Main[enum[m_adv] > 0 && enum[m_adv] < count_Hash] = 1%r
-using E_G_Choose_One_Prob.
-
-claim C_Hash_Lim2 : G_Choose_One.Main[res && count_Hash<limit_Hash && n_inject=enum[m_adv]] >= (1%r)/((limit_Hash+5)%r) * G_Inv_Sign.Main[res && count_Hash < limit_Hash]
-using E_G_Choose_One_Prob.
-
-claim C_Hash_Lim2 : G_Choose_One.Main[res && count_Hash<limit_Hash && m_inject=m_adv] >= (1%r)/(limit_Hash%r) * G_Inv_Sign.Main[res && count_Hash < limit_Hash]
-compute.
-
-note that adv_m in_dom thing (because verify calls hash and verify gets called)
-
-we need to complete this proof
-then we can make a probability claim about m_inject = enum[adv_m]
-completing the proof will first require adding enum
-we may need to rework hash count a little to so that it doesn't count repeated queries.  Hopefully we can avoid that though.
-
-
-
-
-(* in_dom => i > 0 and i < q *)
-
-
-
-(* here *)
-
-derandomize.
-wp.
-rnd.
-simpl.
-trivial.
-save.
-
-(* Next we need to prove that the output of the Sign function is still the same *)
-equiv Mod_Sign : BLS_EF.Sign ~ G_Inv_Sign.Sign :
-  ={m,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
-  (forall (m_0:message), in_dom(m_0,hashes{2}) =>
-    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==>
-  ={res,secret_key,queried,count_Hash} && rand_oracle{1}=hashes{2} &&
-  (forall (m_0:message), in_dom(m_0,hashes{2}) =>
-    sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
-
-wp.
-swap{1} 2.
-app 1 1 
-  (in_dom(m{1}, rand_oracle{1}) &&
-    in_dom(m{2}, hashes{2}) &&
-    h{1}=rand_oracle{1}[m{1}] &&
-    h{2}=hashes{2}[m{2}]) &&
-    ={m,secret_key,queried,count_Hash} &&
-    rand_oracle{1} = hashes{2} &&
-    (forall (m_0 : message),
-      in_dom (m_0,hashes{2}) =>
-      sigs{2}[m_0] = hashes{2}[m_0] ^ secret_key{2}).
-inline.
-sp.
-if.
-derandomize.
-wp.
-apply : Rand_G_1_def().
-simpl.
-
-wp.
-simpl.
-
-trivial.
-save.
-
-equiv Mod_Verify : BLS_EF.Verify ~ G_Inv_Sign.Verify : ={m, s, pk, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
-    (forall (m_0:message), in_dom(m_0,hashes{2}) => 
-      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) ==> ={res,queried, count_Hash}.
-wp.
-call using Mod_Hash.
-wp.
-trivial.
-save.
-
-equiv Mod_A : BLS_EF.A ~ G_Inv_Sign.A : 
-={adv_public_key, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
-(forall (m_0:message), in_dom(m_0,hashes{2}) => 
-      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})
-  ==>
-  ={res, secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
-  (forall (m_0:message), in_dom(m_0,hashes{2}) => 
-      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}) by auto(={secret_key, queried, count_Hash} && rand_oracle{1}=hashes{2} &&
-  (forall (m_0:message), in_dom(m_0,hashes{2}) => 
-      sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})).
-    
-
-
-equiv e_G_Choose_One : G_Inv_Sign.Main ~ G_Choose_One.Main : true ==> ={res} && (count_Hash{1} <= limit_Hash)=(count_Hash{2} <= limit_Hash).
-call using Mod_Verify.
-call using Mod_A.
-wp.
-inline.
-wp.
-rnd.
-trivial.
-save.
-
-
-(* prove this is equivalent to the other game when ...the bad
-   thing doesn't happen *)
-
-
-call using Mod_Hash.
-trivial.
-simpl.
-
-
-wp.
-inline.
-app 1 1  (={m_0,m,secret_key,queried} && m_0{1}=m{1} && m_0{2}=m{2} && rand_oracle{1} = hashes{2}) && (forall (m_0:message), in_dom(m_0,hashes{2}) => sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2}).
-trivial.
-if.
-swap{2} -1.
-app 1 2 (={m_0,m,secret_key,queried} && m_0{1} = m{1} && m_0{2} = m{2} && rand_oracle{1} = hashes{2} && rand_oracle{1}[m_0{1}]=hashes{2}[m_0{2}] && (forall (m_0:message), in_dom(m_0,hashes{2}) => sigs{2}[m_0]=hashes{2}[m_0]^secret_key{2})).
-derandomize.
-wp.
-apply : Rand_G_1_def().
-simpl.
-
-wp.
-simpl.
-wp.
-trivial.
-
-
-
-app 0 0 m{2}=m_0{2} && ={m_0,m,secret_key,queried} &&
-         rand_oracle{1} = hashes{2} &&
-          rand_oracle{1}[m_0{1}] = hashes{2}[m_0{2}]
-.
-
-admit.
-trivial.
-
-app 2 
-wp.
-sp.
-if.
-derandomize.
-wp.
-
-simpl.
-trivial.
-
-
-
-equiv Mod_Sigs : BLS_EF.Sign ~ G_Inv_Sign.Hash : 
-={m,secret_key,queried} && rand_oracle{1}=hashes{2} ==> res{1}==sigs{2}[m{2}].
-
-equiv Mod_Sign : BLS_EF.Sign ~ G_Inv_Sign.Sign : 
-={m,secret_key,queried} && rand_oracle{1}=hashes{2} ==> ={res,secret_key,queried} && rand_oracle{1}=hashes{2}.
-
-
-
-game Inject = BLS_EF
-var j : int
-var i : int
-var mess_num : (message, int) map
-
-where Hash = {
-    if(!in_dom(m, rand_oracle)) {
-      rand_oracle[m] = Rand_G_1();
-      mess_num[m]=i;
-      i=i+1;
-    }
-    return rand_oracle[m];
-}
-
-and Init = {
-  secret_key = Rand_G_1_exp();
-  rand_oracle = empty_map;
-  mess_num = empty_map;
-  queried = [];
-  i=0;
-  j=[0..queries];
-  return true;
-}.
-  
-equiv
-
-
-
-game Test1 = {
-  fun Main() : G_1 = {
-    var ret : G_1;
-    ret = Rand_G_1();
-    return ret;
-  }
-}.
-
-game Test2 = Test1
-
-where Main = {
-  var exp : int;
-  exp = [0..q];
-
-  return g_1^exp;
-}.
-
-equiv Test_equiv : Test1.Main ~ Test2.Main : true ==> ={res}.
-apply : Rand_G_1_def().
-simpl.
-save.
 
 
 
