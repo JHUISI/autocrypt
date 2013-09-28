@@ -483,6 +483,7 @@ equiv E_Prob_Facts_Hash : G_Choose_One.Hash ~ G_Choose_One.Hash :
 &&
 (n_inject_fake{1} = n_inject{2}).
 
+
 derandomize.
 wp.
 rnd.
@@ -624,14 +625,35 @@ wp.
 trivial.
 save.
 
+
 equiv E_n_inject_no_range : G_Choose_One.Main ~ G_Choose_One.Main : 
 true
 ==>
 (count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1){1}
 = 
 (count_Hash<limit_Hash && res){2}. 
-admit.
-save. 
+(* need to show in_dom(m_adv, enum) *)
+inline Init.
+inline Verify.
+inline Hash.
+derandomize.
+swap{1} [1-4] 1.
+swap{2} [2-4] 1.
+swap{1} -18.
+swap{2} -18.
+rnd>>.
+rnd>>.
+rnd>>.
+rnd>>.
+rnd>>.
+wp.
+call using E_Prob_Facts_A.
+wp.
+trivial.
+save.
+
+TODO: complete
+
 
 claim C_inject_fake_prob : 
 G_Choose_One.Main[count_Hash<limit_Hash && res && enum[m_adv]<limit_Hash && enum[m_adv]>=1] * 1%r/(limit_Hash)%r 
