@@ -135,7 +135,16 @@ def addTemplateLinesToOutputECFile_SymmetricOrAsymmetric(outputECFile, assignInf
 
     outputString += "cnst q : int.\n\n"
 
-    outputString += "cnst limit_Hash : int.\n\n"
+    outputString += "cnst limit_" + hashFuncName_EC + " : int.\n"
+    outputString += "cnst limit_" + signFuncName_EC + " : int.\n"
+
+    extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
+
+    for extraFuncForAdversary in extraFuncsForAdversary:
+        outputString += "cnst limit_" + extraFuncForAdversary + " : int.\n"
+
+    outputString += "\n"
+
     outputString += "op [*] : (G_1, G_1) -> G_1 as G_1_mul.\n"
 
     if (pairingSetting == asymmetricPairingSettingKeyword_SDL):
@@ -168,6 +177,16 @@ def addTemplateLinesToOutputECFile_SymmetricOrAsymmetric(outputECFile, assignInf
     outputString += "   So we declare an operator (%%) which stand for the modulo ...\n"
     outputString += "*)\n\n"
     outputString += "op [%%] : (int,int) -> int as int_mod.\n\n"
+
+    outputString += "axiom limit_" + hashFuncName_EC + "_pos : 0 < limit_" + hashFuncName_EC + ".\n"
+    outputString += "axiom limit_" + signFuncName_EC + "_pos : 0 < limit_" + signFuncName_EC + ".\n"
+
+    extraFuncsForAdversary = getExtraFuncsForAdversary(assignInfo, config)
+
+    for extraFuncForAdversary in extraFuncsForAdversary:
+        outputString += "axiom limit_" + extraFuncForAdversary + "_pos : 0 < limit_" + extraFuncForAdversary + ".\n"
+
+    outputString += "\n"
 
     if (pairingSetting == symmetricPairingSettingKeyword_SDL):
         outputString += "axiom q_1_pos : 0 < q_1.\n"
@@ -1520,7 +1539,7 @@ def getExtraFuncsForAdversary(assignInfo, config):
     namesOfSecretKeyVars = []
     namesOfSecretKeyVars.append(config.secretKeyName_SDL)
 
-    secretKeyVars = getVarDeps(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
+    secretKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.secretKeyName_SDL, config.keygenFuncName_SDL)
 
     for secretKeyVar in secretKeyVars:
         if (secretKeyVar not in namesOfSecretKeyVars):
@@ -1541,7 +1560,7 @@ def getExtraFuncsForAdversary(assignInfo, config):
     namesOfPublicKeyVars = []
     namesOfPublicKeyVars.append(config.publicKeyName_SDL)
 
-    publicKeyVars = getVarDeps(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
+    publicKeyVars = getVarDepsOrJustVarItself(assignInfo, config, config.publicKeyName_SDL, config.keygenFuncName_SDL)
 
     for publicKeyVar in publicKeyVars:
         if (publicKeyVar not in namesOfPublicKeyVars):

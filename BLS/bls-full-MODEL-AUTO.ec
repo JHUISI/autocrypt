@@ -18,6 +18,8 @@ cnst q_T : int.
 cnst q : int.
 
 cnst limit_Hash : int.
+cnst limit_Sign : int.
+cnst limit_testFunction2 : int.
 
 op [*] : (G_1, G_1) -> G_1 as G_1_mul.
 op [*] : (G_2, G_2) -> G_2 as G_2_mul.
@@ -41,6 +43,10 @@ op e : (G_1, G_2) -> G_T as G_1_G_2_pair.
 *)
 
 op [%%] : (int,int) -> int as int_mod.
+
+axiom limit_Hash_pos : 0 < limit_Hash.
+axiom limit_Sign_pos : 0 < limit_Sign.
+axiom limit_testFunction2_pos : 0 < limit_testFunction2.
 
 axiom q_1_pos : 0 < q_1.
 axiom q_2_pos : 0 < q_2.
