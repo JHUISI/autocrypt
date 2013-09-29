@@ -396,6 +396,7 @@ game G_Choose_One = G_Inv_Sign
     queried = [];
     hashes = empty_map;
     sigs = empty_map;
+    bad = false;
     n_inject = [1..limit_Hash];
     return true;
   }
@@ -822,13 +823,15 @@ save.
 claim C_basic_2 : G_Inv_Sign.Main[res && count_Hash<limit_Hash] = G_Choose_One.Main[res && count_Hash<limit_Hash] using E_G_Choose_One.
 
 equiv E_Bad_Insig_Hash : G_Choose_One.Hash ~ G_Choose_One.Hash : 
- ={m,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
-(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
-((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1})
+={m,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key}
+&&
+(forall (mq:message), !in_dom(mq, hashes){1} => !mem(mq, queried){1}) &&
+((forall (mq2:message), (enum{1}[mq2] = n_inject{1} => !mem(mq2, queried{1}))) => !bad{1})
 ==>
- ={res,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
-(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
-((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1}).
+={res,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key}
+&&
+(forall (mq:message), !in_dom(mq, hashes){1} => !mem(mq, queried){1}) &&
+((forall (mq2:message), (enum{1}[mq2] = n_inject{1} => !mem(mq2, queried{1}))) => !bad{1}).
 derandomize.
 rnd>>.
 wp.
@@ -836,18 +839,30 @@ trivial.
 save.
 
 equiv E_Bad_Insig_Sign : G_Choose_One.Sign ~ G_Choose_One.Sign :  
- ={m,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
-(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
-((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1})
+ ={m,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key}
+&&
+(forall (mq:message), (!in_dom(mq, hashes){1} => (!mem(mq, queried){1} && !in_dom(mq, enum){1})) && (in_dom(mq, enum){1} => (enum[mq] <= count_Hash){1}) && (in_dom(mq, enum){1} <=> in_dom(mq, hashes){1}))
+&&
+((forall (mq2:message), ((in_dom(mq2, enum{1}) && (enum{1}[mq2] = n_inject{1})) => !mem(mq2, queried{1}))) => !bad{1})
 ==>
- ={res,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
-(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
-((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1}).
+ ={res,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} 
+&&
+(forall (mq:message), (!in_dom(mq, hashes){1} => (!mem(mq, queried){1} && !in_dom(mq, enum){1})) && (in_dom(mq, enum){1} => (enum[mq] <= count_Hash){1}) && (in_dom(mq, enum){1} <=> in_dom(mq, hashes){1}))
+&&
+((forall (mq2:message), ((in_dom(mq2, enum{1}) && (enum{1}[mq2] = n_inject{1})) => !mem(mq2, queried{1}))) => !bad{1}).
 inline.
 derandomize.
 rnd>>.
-app 5 5 ( ={s,m,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} && forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) && in_dom(m, hashes){1} &&
-((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1}).
+app 5 5 ( ={m,m_0,h,s,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} 
+&&
+(forall (mq:message), (!in_dom(mq, hashes){1} => (!mem(mq, queried){1} && !in_dom(mq, enum){1})) && (in_dom(mq, enum){1} => (enum[mq] <= count_Hash){1}) && (in_dom(mq, enum){1} <=> in_dom(mq, hashes){1}))
+&&
+((forall (mq2:message), ((in_dom(mq2, enum{1}) && (enum{1}[mq2] = n_inject{1})) => !mem(mq2, queried{1}))) => !bad{1})
+)
+&&
+in_dom(m, hashes){1} && in_dom(m, enum){1}.
+trivial.
+case : bad.
 wp.
 trivial.
 wp.
@@ -855,22 +870,107 @@ trivial.
 save.
 
 equiv E_Bad_Insig_A : G_Choose_One.A ~ G_Choose_One.A :  
- ={adv_public_key,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} && (forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
-((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1})
+ ={adv_public_key,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key}
+&& 
+(forall (mq:message), !in_dom(mq, hashes){1} => !mem(mq, queried){1}) &&
+((forall (mq2:message), (enum[mq2] = n_inject && mem(mq2, queried)){1}) <=> bad{1})
+&&
+(forall (mq:message), !in_dom(mq, hashes){2} => !mem(mq, queried){2}) &&
+((forall (mq2:message), (enum[mq2] = n_inject && mem(mq2, queried)){2}) <=> bad{2})
 ==>
- ={res,bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
-(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
-((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1}) by auto (
- ={bad,given_2,enum,m_adv,m_inject,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key} &&
-(forall (m4:message), !in_dom(m4, hashes){1} => !mem(m4, queried){1}) &&
-((exists (m3:message), (enum[m3] = n_inject && mem(m3, queried)){1}) <=> bad{1})
-).
+={res,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key}
+&&
+(forall (mq:message), !in_dom(mq, hashes){1} => !mem(mq, queried){1}) &&
+((forall (mq2:message), (enum[mq2] = n_inject && mem(mq2, queried)){1}) <=> bad{1})
+&&
+(forall (mq:message), !in_dom(mq, hashes){2} => !mem(mq, queried){2}) &&
+((forall (mq2:message), (enum[mq2] = n_inject && mem(mq2, queried)){2}) <=> bad{2}) by auto (
+ ={bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key}
+&&
+(forall (mq:message), !in_dom(mq, hashes){1} => !mem(mq, queried){1}) &&
+((forall (mq2:message), (enum[mq2] = n_inject && mem(mq2, queried)){1}) <=> bad{1})
+&&
+(forall (mq:message), !in_dom(mq, hashes){2} => !mem(mq, queried){2}) &&
+((forall (mq2:message), (enum[mq2] = n_inject && mem(mq2, queried)){2}) <=> bad{2})).
 
 equiv E_Bad_Insig : G_Choose_One.Main ~ G_Choose_One.Main : 
 true 
 ==> 
 (count_Hash<limit_Hash && enum[m_adv]=n_inject && res){1} => (count_Hash<limit_Hash && enum[m_adv]=n_inject && res && (!bad)){2}.
+
+app 10 10 (={count_Hash, enum, m_adv, n_inject, queried, v, bad} && (count_Hash{1}<limit_Hash => count_Hash{2}<limit_Hash) && ((enum[m_adv]=n_inject && !mem(m_adv, queried)){1} => !bad{2})). (* rephrase the goal a little *)
+inline.
+derandomize.
+app 23 23 (={m_adv,s,m,pk,exp_0,b_0,secret_key_0,n_inject_0,n_inject_fake_0,b,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key}
+&&
+(forall (mq:message), !in_dom(mq, hashes){1} => !mem(mq, queried){1}) &&
+((forall (mq2:message), (enum[mq2] = n_inject && mem(mq2, queried)){1}) <=> bad{1})
+&&
+(forall (mq:message), !in_dom(mq, hashes){2} => !mem(mq, queried){2}) &&
+((forall (mq2:message), (enum[mq2] = n_inject && mem(mq2, queried)){2}) <=> bad{2})).
 admit.
+case : (in_dom(m, hashes)).
+condf.
+wp.
+trivial.
+wp.
+trivial.
+wp.
+trivial.
+
+
+wp.
+trivial.
+admit.
+wp.
+trivial.
+
+wp.
+call using E_Bad_Insig_A.
+wp.
+rnd.
+rnd.
+rnd.
+rnd.
+rnd.
+trivial.
+
+
+trivial.
+save.
+
+
+
+((enum[m_adv]=n_inject){1}=(enum[m_adv]=n_inject){2}) && ((v && !mem(m_adv, queried)){1} => (v && !mem(m_adv, queried)){2}) && (enum[m_adv]=n_inject && v && !mem(m_adv, queried)){1} => (!bad){2}).
+admit.
+trivial.
+
+
+
+case : ((count_Hash<limit_Hash) && enum[m_adv]=n_inject && v && !mem(m_adv, queried)). 
+trivial.
+
+trivial.
+case : bad.
+admit.
+trivial.
+
+case : ={v}.
+
+case : bad{2}.
+
+inline.
+derandomize.
+wp.
+call using E_Bad_Insig_A.
+wp.
+rnd.
+rnd.
+rnd.
+rnd.
+rnd.
+trivial.
+
 save.
 
 game G_Violate = G_Choose_One
