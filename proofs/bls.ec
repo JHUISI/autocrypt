@@ -944,6 +944,60 @@ wp.
 simpl.
 save.
 
+(* copied for reference *)
+(*
+  and Hash = {
+    var exp : int;
+    count_Hash = count_Hash + 1;
+
+    if(!in_dom(m, hashes)) {
+      enum[m] = count_Hash;
+      if(count_Hash = n_inject) {
+        m_inject = m;
+        (* hashes[m] = given_2 *)
+      } (* else { *)
+        exp=Rand_exp();
+        hashes[m]=g_1^exp;      
+        sigs[m]=given_1^exp;
+      (* } *)
+    }
+    return hashes[m];
+  }
+
+  and Sign = {
+    var h : G_1;
+    var s : G_1;
+    h = Hash(m);
+    s = sigs[m];
+    queried = m :: queried;
+    if (enum[m]=n_inject) {
+      bad = true;
+    }
+    return s;
+  }
+
+  and Main = {
+    var pk : G_1;    
+    var s : G_1;
+    var v : bool;
+    var dummy : bool;
+    var b : int;
+
+    dummy=Init();
+    secret_key = Rand_exp();
+    b = Rand_exp();
+    given_1 = g_1^secret_key;
+    given_2 = g_1^b;
+
+    pk = given_1;
+
+    (m_adv, s) = A(pk);
+
+    v = Verify(m_adv, s, pk);
+    n_inject_fake = [1..limit_Hash];
+    return v && !mem(m_adv, queried);
+  }
+*)
 
 game G_Violate = G_Choose_One
   where Hash = {
@@ -952,14 +1006,14 @@ game G_Violate = G_Choose_One
 
     if(!in_dom(m, hashes)) {
       enum[m] = count_Hash;
+      exp=Rand_exp();
       if(count_Hash = n_inject) {
         m_inject = m;
         hashes[m] = given_2;
       } else {
-        exp=Rand_exp();
-        hashes[m]=g_1^exp;      
-        sigs[m]=given_1^exp;
+        hashes[m]=g_1^exp;  
       }
+      sigs[m]=given_1^exp;
     }
     return hashes[m];
   }
@@ -989,17 +1043,52 @@ game G_Violate = G_Choose_One
   }
 .
 
-(* Prove the output of the hash functions is the same when count isn't n_inject *)
+equiv E_G_Violate_Hash : G_Choose_One.Hash ~ G_Violate.Hash : 
+((!bad{1}) && (!bad{2})))
+=> ={m,bad,given_2,enum,n_inject,given_1,hashes,sigs,count_Verify,
+     count_Sign,count_Hash,queried,rand_oracle,secret_key}
+   &&
+   (forall (mq:message), ((in_dom(mq, enum) && enum[mq]<>n_inject){2})
+      => (sigs[mq]{1} = sigs[mq]{2})) &&
+   (forall (mq:message), ((in_dom(mq, enum) && enum[mq]<>n_inject){2})
+      => (e(hashes[mq], given_1) = e(sigs[mq], g_1)){2}) &&
+   (forall (mq:message), ((in_dom(mq, enum) && enum[mq]=n_inject){2})
+      => (hashes[mq]=given_2))
 
-(* Prove that m!=m_inject implies that the output of Sign is the same *)
+(* trying to figure out how we would prove that hashes are equiv - by eager?*) 
+
+(* need to say something about hashes *)
+
+e(h, pk) = e(s, g_1)
+
+={m,bad,
+
+s,pk,bad,given_2,enum,n_inject,given_1,sigs,hashes,count_Verify,count_Sign,count_Hash,queried,rand_oracle,secret_key
+
+
+={bad} &&
+((count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}) && 
+((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && 
+(((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && 
+      (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2} && 
+      (!bad{1}) && (!bad{2})) => 
+   (res{1}=>res{2})).
 
 
 
 
 
-(* step 1: prove that condition C implies that verify succeeds *)
 
-equiv E_G_Violate : G_Choose_One.Main ~ G_Violate.Main : true ==> ((count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}) && ((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && ={bad} && (((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2} && (!bad{1}) && (!bad{2})) => (res{1}=>res{2})).
+
+
+equiv E_G_Violate : G_Choose_One.Main ~ G_Violate.Main : true ==> 
+={bad} &&
+((count_Hash < limit_Hash){1} = (count_Hash < limit_Hash){2}) && 
+((enum[m_adv]=n_inject){1} = (enum[m_adv]=n_inject){2}) && 
+(((count_Hash < limit_Hash){1} && (count_Hash < limit_Hash){2} && 
+      (enum[m_adv]=n_inject){1} && (enum[m_adv]=n_inject){2} && 
+      (!bad{1}) && (!bad{2})) => 
+   (res{1}=>res{2})).
 admit.
 
 (*
